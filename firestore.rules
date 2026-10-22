@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All BrandGuard AI data access is mediated through the authoritative FastAPI backend
+    // using the Firebase Admin SDK. Direct client access is denied to guarantee
+    // server-enforced organization isolation, RBAC, and tamper-resistant audit logs.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

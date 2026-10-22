@@ -50,7 +50,7 @@ export default function AuditTrailView({ auditLogs, onRefresh }) {
           <label>Search Entity or Actor:</label>
           <input
             type="text"
-            placeholder="e.g. draft_sample_1 or user email..."
+            placeholder="e.g. draft_101 or user email..."
             value={filterEntity}
             onChange={(e) => setFilterEntity(e.target.value)}
           />

@@ -2133,3 +2133,33 @@ button:disabled {
   align-items: center;
   margin-bottom: 12px;
 }
+
+.empty-guidelines-card {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.empty-guidelines-card .empty-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  display: inline-block;
+}
+
+.empty-guidelines-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.empty-guidelines-card p {
+  color: var(--text-muted);
+  max-width: 520px;
+  margin: 0 auto 20px auto;
+  line-height: 1.5;
+  font-size: 13.5px;
+}
+

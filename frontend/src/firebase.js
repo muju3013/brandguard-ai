@@ -3,6 +3,7 @@ import {
   getAuth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
@@ -96,6 +97,14 @@ export async function registerWithEmail(email, password) {
 
   // Demo register fallback
   return loginWithEmail(email, password);
+}
+
+export async function resetPassword(email) {
+  if (isFirebaseConfigured && firebaseAuthInstance) {
+    await sendPasswordResetEmail(firebaseAuthInstance, email);
+    return true;
+  }
+  throw new Error('Firebase Authentication is not configured on the client.');
 }
 
 export async function loginWithDemoIdentity(demoUser) {

@@ -23,7 +23,7 @@ export default function Navbar({
           <div className="brand-logo-icon">🛡️</div>
           <div className="brand-titles">
             <span className="brand-name">BrandGuard AI</span>
-            <span className="brand-phase">Phase 2 · Governance</span>
+            <span className="brand-phase">Governance & AI Review</span>
           </div>
         </div>
 
@@ -62,12 +62,14 @@ export default function Navbar({
             >
               Audit Trail
             </button>
-            <button
-              className={`nav-tab-btn ${currentTab === 'phase1' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('phase1')}
-            >
-              Phase 1 Sandbox
-            </button>
+            {import.meta.env.DEV && (
+              <button
+                className={`nav-tab-btn ${currentTab === 'phase1' ? 'active' : ''}`}
+                onClick={() => setCurrentTab('phase1')}
+              >
+                Dev Sandbox
+              </button>
+            )}
           </nav>
         )}
       </div>
@@ -77,7 +79,7 @@ export default function Navbar({
           <>
             <div className="workspace-pill" title="Tenant Workspace">
               <span className="tenant-dot"></span>
-              <span className="workspace-name">{user.org_name || 'Acme Global Brands'}</span>
+              <span className="workspace-name">{user.org_name || 'Primary Workspace'}</span>
             </div>
 
             <div className="user-profile-widget">
@@ -114,7 +116,7 @@ export default function Navbar({
           </>
         ) : (
           <button className="btn-primary" onClick={onOpenAuth}>
-            Sign In / Demo Access
+            Sign In / Register
           </button>
         )}
       </div>

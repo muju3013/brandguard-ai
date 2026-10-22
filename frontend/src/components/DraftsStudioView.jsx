@@ -15,10 +15,10 @@ export default function DraftsStudioView({
 
   // New Draft Form State
   const [newTitle, setNewTitle] = useState('');
-  const [newCampaign, setNewCampaign] = useState('Summer Product Launch 2026');
+  const [newCampaign, setNewCampaign] = useState('');
   const [newChannel, setNewChannel] = useState('social');
   const [newAudience, setNewAudience] = useState('general_public');
-  const [newContent, setNewContent] = useState('Introducing our revolutionary skincare! Guaranteed results that will blow your mind and eliminate acne.');
+  const [newContent, setNewContent] = useState('');
 
   // Selected Draft Editor State
   const [editContent, setEditContent] = useState('');

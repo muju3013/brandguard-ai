@@ -179,7 +179,23 @@ export default function GuidelinesView({
       </div>
 
       <div className="rules-grid">
-        {filteredRules.map((rule) => (
+        {filteredRules.length === 0 ? (
+          <div className="empty-guidelines-card">
+            <span className="empty-icon">⚖️</span>
+            <h3>No Guidelines Found</h3>
+            <p>
+              {isAdmin
+                ? "No guidelines match this category. Click '+ Add Guideline Rule' to define authorized claims, prohibited terms, or tone rules."
+                : "No brand guidelines have been created for this workspace yet. An administrator must define active claims and rules before evaluation."}
+            </p>
+            {isAdmin && (
+              <button className="btn-primary" onClick={openAddModal}>
+                + Add Guideline Rule
+              </button>
+            )}
+          </div>
+        ) : (
+          filteredRules.map((rule) => (
           <div key={rule.id} className={`rule-card ${!rule.is_active ? 'inactive-rule' : ''}`}>
             <div className="rule-card-top">
               <div className="rule-ids-left">

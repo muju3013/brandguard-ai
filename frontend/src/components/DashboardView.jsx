@@ -19,7 +19,7 @@ export default function DashboardView({
         <div>
           <h2>Welcome back, {user?.email}</h2>
           <p className="banner-subtitle">
-            Workspace: <strong>{user?.org_name || 'Acme Global Brands'}</strong> · Role:{' '}
+            Workspace: <strong>{user?.org_name || 'Primary Workspace'}</strong> · Role:{' '}
             <span className={`role-badge role-${user?.role}`}>{user?.role?.toUpperCase()}</span>
           </p>
         </div>

@@ -1,3 +1,13 @@
+export class ApiError extends Error {
+  constructor(message, status = 0, data = null, isNetworkError = false) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+    this.isNetworkError = isNetworkError;
+  }
+}
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 
 function getHeaders(token) {
@@ -18,14 +28,36 @@ async function request(endpoint, options = {}, token = null) {
     }
   };
 
-  const res = await fetch(url, config);
+  let res;
+  try {
+    res = await fetch(url, config);
+  } catch (networkErr) {
+    throw new ApiError(
+      `Network connection failed: Unable to reach BrandGuard API at ${API_BASE}. The backend service may be offline or starting up.`,
+      0,
+      null,
+      true
+    );
+  }
+
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
-    const errorMsg = data?.detail || `HTTP Error ${res.status}`;
-    const err = new Error(errorMsg);
-    err.status = res.status;
-    err.data = data;
+    let errorMsg = data?.detail;
+    if (!errorMsg) {
+      if (res.status === 401) {
+        errorMsg = 'Authentication required: Your session has expired or is invalid. Please sign in again.';
+      } else if (res.status === 403) {
+        errorMsg = 'Permission denied (403): Your account role does not have authorization for this resource.';
+      } else if (res.status === 404) {
+        errorMsg = 'Not found (404): No organization membership or guideline record exists for your account.';
+      } else if (res.status === 503) {
+        errorMsg = 'Backend service unavailable (503): Database or authentication credentials temporarily unreachable.';
+      } else {
+        errorMsg = `API Error ${res.status}: Unexpected backend response.`;
+      }
+    }
+    const err = new ApiError(errorMsg, res.status, data, false);
     throw err;
   }
 
@@ -33,6 +65,8 @@ async function request(endpoint, options = {}, token = null) {
 }
 
 export const api = {
+  getBaseUrl: () => API_BASE,
+
   // Phase 1 Legacy Endpoints
   checkHealth: () => request('/health'),
   runPhase1Review: (draft, channel = 'social') =>

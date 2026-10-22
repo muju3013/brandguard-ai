@@ -315,12 +315,13 @@ class FirestoreStore:
         return org
 
     def get_membership(self, user_id_or_email: str) -> Optional[Membership]:
+        from google.cloud.firestore_v1.base_query import FieldFilter
         # Search by user_id
-        docs = list(self.members_col.where("user_id", "==", user_id_or_email).limit(1).stream())
+        docs = list(self.members_col.where(filter=FieldFilter("user_id", "==", user_id_or_email)).limit(1).stream())
         if docs:
             return Membership(**docs[0].to_dict())
         # Search by email
-        docs = list(self.members_col.where("email", "==", user_id_or_email).limit(1).stream())
+        docs = list(self.members_col.where(filter=FieldFilter("email", "==", user_id_or_email)).limit(1).stream())
         if docs:
             return Membership(**docs[0].to_dict())
         return None
@@ -340,14 +341,16 @@ class FirestoreStore:
         return membership
 
     def list_org_memberships(self, org_id: str) -> List[Membership]:
-        docs = self.members_col.where("org_id", "==", org_id).stream()
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        docs = self.members_col.where(filter=FieldFilter("org_id", "==", org_id)).stream()
         return [Membership(**d.to_dict()) for d in docs]
 
     # Guidelines methods
     def list_guidelines(self, org_id: str, active_only: bool = False) -> List[GuidelineRule]:
-        q = self.guidelines_col.where("org_id", "==", org_id)
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        q = self.guidelines_col.where(filter=FieldFilter("org_id", "==", org_id))
         if active_only:
-            q = q.where("is_active", "==", True)
+            q = q.where(filter=FieldFilter("is_active", "==", True))
         rules = [GuidelineRule(**d.to_dict()) for d in q.stream()]
         return sorted(rules, key=lambda x: x.rule_id)
 
@@ -356,7 +359,14 @@ class FirestoreStore:
         return GuidelineRule(**doc.to_dict()) if doc.exists else None
 
     def get_guideline_by_rule_id(self, org_id: str, rule_id: str) -> Optional[GuidelineRule]:
-        docs = list(self.guidelines_col.where("org_id", "==", org_id).where("rule_id", "==", rule_id).limit(1).stream())
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        docs = list(
+            self.guidelines_col
+            .where(filter=FieldFilter("org_id", "==", org_id))
+            .where(filter=FieldFilter("rule_id", "==", rule_id))
+            .limit(1)
+            .stream()
+        )
         if docs:
             return GuidelineRule(**docs[0].to_dict())
         return None
@@ -371,9 +381,10 @@ class FirestoreStore:
 
     # Drafts methods
     def list_drafts(self, org_id: str, creator_id: Optional[str] = None) -> List[Draft]:
-        q = self.drafts_col.where("org_id", "==", org_id)
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        q = self.drafts_col.where(filter=FieldFilter("org_id", "==", org_id))
         if creator_id:
-            q = q.where("creator_id", "==", creator_id)
+            q = q.where(filter=FieldFilter("creator_id", "==", creator_id))
         drafts = [Draft(**d.to_dict()) for d in q.stream()]
         return sorted(drafts, key=lambda x: x.created_at, reverse=True)
 
@@ -390,20 +401,23 @@ class FirestoreStore:
         self.audit_col.document(log.id).set(log.model_dump())
 
     def list_audit_logs(self, org_id: str, entity_id: Optional[str] = None) -> List[AuditLog]:
-        q = self.audit_col.where("org_id", "==", org_id)
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        q = self.audit_col.where(filter=FieldFilter("org_id", "==", org_id))
         if entity_id:
-            q = q.where("entity_id", "==", entity_id)
+            q = q.where(filter=FieldFilter("entity_id", "==", entity_id))
         logs = [AuditLog(**d.to_dict()) for d in q.stream()]
         return sorted(logs, key=lambda x: x.timestamp, reverse=True)
 
 
 def initialize_db():
     import logging
+    from app.firebase_setup import get_firebase_app
     logger = logging.getLogger("brandguard.db")
     if settings.use_firestore:
         try:
+            fb_app = get_firebase_app()
             from firebase_admin import firestore
-            fs_client = firestore.client()
+            fs_client = firestore.client(app=fb_app)
             logger.info("Connected to live Google Cloud Firestore.")
             return FirestoreStore(fs_client)
         except Exception as e:

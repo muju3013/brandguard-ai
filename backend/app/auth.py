@@ -8,21 +8,13 @@ from app.db import db
 
 logger = logging.getLogger("brandguard.auth")
 
-# Firebase Admin SDK initialization
-firebase_app = None
+from app.firebase_setup import get_firebase_app
 try:
-    import firebase_admin
-    from firebase_admin import auth as firebase_auth, credentials
+    from firebase_admin import auth as firebase_auth
+except ImportError:
+    firebase_auth = None
 
-    if settings.firebase_service_account_path and os.path.exists(settings.firebase_service_account_path):
-        cred = credentials.Certificate(settings.firebase_service_account_path)
-        firebase_app = firebase_admin.initialize_app(cred)
-        logger.info("Firebase Admin initialized with service account key.")
-    elif settings.firebase_project_id:
-        firebase_app = firebase_admin.initialize_app(options={"projectId": settings.firebase_project_id})
-        logger.info(f"Firebase Admin initialized with project ID: {settings.firebase_project_id}")
-except Exception as e:
-    logger.warning(f"Firebase Admin SDK not initialized with live credentials ({e}). Mock/Demo authentication active.")
+firebase_app = get_firebase_app()
 
 def verify_firebase_or_demo_token(token: str) -> dict:
     """
@@ -61,8 +53,11 @@ def verify_firebase_or_demo_token(token: str) -> dict:
         
         return {"uid": identifier, "email": f"{identifier}@example.com"}
 
+    import app.auth as self_mod
+    active_fb_app = getattr(self_mod, "firebase_app", None)
+
     # Fail closed in production if Firebase Admin is unconfigured
-    if settings.is_production and not firebase_app:
+    if settings.is_production and not active_fb_app:
         logger.error("Production request blocked: Firebase Admin SDK is not initialized with live credentials.")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -71,9 +66,9 @@ def verify_firebase_or_demo_token(token: str) -> dict:
         )
 
     # Live Firebase ID Token Verification
-    if firebase_app:
+    if active_fb_app and firebase_auth:
         try:
-            decoded = firebase_auth.verify_id_token(token)
+            decoded = firebase_auth.verify_id_token(token, app=active_fb_app)
             return {
                 "uid": decoded.get("uid"),
                 "email": decoded.get("email", f"{decoded.get('uid')}@firebase.user")
@@ -119,15 +114,23 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> Authenticat
     membership = db.get_membership(uid) or db.get_membership(email)
 
     if not membership:
-        # First-time user onboarding: auto-assign to default Acme workspace as Creator
-        acme_org = db.get_organization("org_acme")
-        org_id = acme_org.id if acme_org else "org_acme"
+        # First-time user onboarding:
+        # Check if the user matches the configured bootstrap admin email
+        is_bootstrap_admin = bool(
+            settings.bootstrap_admin_email and
+            email.lower() == settings.bootstrap_admin_email.strip().lower()
+        )
+        role = "admin" if is_bootstrap_admin else "creator"
+
+        target_org = db.get_organization("org_inkloom_judge") or db.get_organization("org_acme")
+        org_id = target_org.id if target_org else "org_inkloom_judge"
         membership = db.set_membership(
             user_id=uid,
             email=email,
             org_id=org_id,
-            role="creator"
+            role=role
         )
+        logger.info(f"Onboarded new user {email} (UID: {uid}) to org {org_id} with role '{role}'.")
 
     return AuthenticatedUser(
         user_id=membership.user_id,

@@ -47,12 +47,13 @@ def provision_judge_accounts(
     print("-" * 72)
 
     # 1. Check or initialize Firebase Auth user records if Firebase Admin is available
-    firebase_auth_available = False
-    try:
+    from app.firebase_setup import get_firebase_app
+    fb_app = get_firebase_app()
+    firebase_auth_available = fb_app is not None
+    if firebase_auth_available:
         from firebase_admin import auth as fb_auth
-        firebase_auth_available = True
-        print("[+] Firebase Admin SDK is available.")
-    except Exception:
+        print("[+] Firebase Admin SDK is connected with live credentials.")
+    else:
         print("[!] Running in offline/demo mode (Firebase Admin SDK not connected).")
 
     roles = [
@@ -66,7 +67,7 @@ def provision_judge_accounts(
         if firebase_auth_available:
             try:
                 # Try getting existing user
-                user_record = fb_auth.get_user_by_email(email)
+                user_record = fb_auth.get_user_by_email(email, app=fb_app)
                 actual_uid = user_record.uid
                 print(f"  [OK] Existing Firebase Auth user found: {email} (UID: {actual_uid})")
             except Exception:
@@ -75,14 +76,29 @@ def provision_judge_accounts(
                     user_record = fb_auth.create_user(
                         email=email,
                         password=password,
-                        display_name=display_name
+                        display_name=display_name,
+                        app=fb_app
                     )
                     actual_uid = user_record.uid
                     print(f"  [+] Created Firebase Auth user: {email} (UID: {actual_uid})")
                 except Exception as e:
                     print(f"  [!] Note: Could not create Firebase Auth user for {email}: {e}")
 
-        # 2. Store membership and organisation in DB
+        # 2. Ensure Organisation exists in DB
+        existing_org = db.get_organization(org_id)
+        if not existing_org:
+            if hasattr(db, "orgs_col"):
+                db.orgs_col.document(org_id).set({
+                    "id": org_id,
+                    "name": org_name,
+                    "created_at": now_iso(),
+                    "created_by": "system"
+                })
+            else:
+                db.create_organization(org_name, "system")
+            print(f"  [+] Created Organization record: {org_name} ({org_id})")
+
+        # Store membership in DB
         db.set_membership(
             user_id=actual_uid,
             email=email,

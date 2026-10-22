@@ -245,6 +245,46 @@ dist/assets/index--HdbCyW-.js   372.23 kB │ gzip: 95.04 kB
 
 ## 7. Known Limitations & Production Next Steps
 
-1. **Transient Google AI 503 Spikes:** Google's `gemini-3.8-flash` may experience temporary regional demand spikes. BrandGuard's built-in retry and fallback ensures zero downtime by degrading to deterministic rule checking automatically.
+1. **Transient Google AI 503 / 429 Demand Limits:** Free-tier limits for experimental Gemini models may throttle during burst usage. BrandGuard's built-in retry and fallback ensures zero downtime by degrading gracefully to deterministic rule checking automatically.
 2. **Multi-Instance Rate Limiting:** The current rate limiter uses an in-memory sliding window, ideal for single-instance or container deployments. For horizontally scaled clusters (>5 instances), swap with a Redis-backed rate limiter (e.g. `slowapi` with Redis).
 3. **Live Firestore Credentials in Development:** In local development without GCP credentials, BrandGuard operates cleanly with `InMemoryStore`. In production, setting `USE_FIRESTORE=true` strictly enforces Firestore persistence and fails closed if unconfigured.
+
+---
+
+## 8. Live Firebase Integration & Cloud Firestore Verification
+
+### Target Cloud Project:
+- **Firebase Project ID:** `brandguard-ai-techwithmujju`
+- **Project Number:** `844207936178`
+- **Firestore Security Rules:** `allow read, write: if false;` (deployed live via Firebase CLI). All client operations strictly mediated by authoritative FastAPI backend.
+
+### Secure First-Admin Bootstrap:
+To bootstrap or promote an admin account in Firebase Auth and Cloud Firestore:
+```bash
+# In backend virtualenv:
+python -m app.scripts.bootstrap_admin --email judge.admin@inkloom-brandguard.com --role admin
+```
+Additionally, `BOOTSTRAP_ADMIN_EMAIL` in `.env` automatically promotes the specified email upon their first registration.
+
+### Evaluation & Judge Accounts:
+| Role | Email | Password | Access Capabilities |
+| :--- | :--- | :--- | :--- |
+| **Admin** | `judge.admin@inkloom-brandguard.com` | `BrandGuard2026!Judge` | Create/edit rules, manage team, view tamper-evident audit logs |
+| **Reviewer** | `judge.reviewer@inkloom-brandguard.com` | `BrandGuard2026!Judge` | Review pending queue, approve/request changes with notes |
+| **Creator** | `judge.creator@inkloom-brandguard.com` | `BrandGuard2026!Judge` | Submit drafts, run deterministic + Gemini AI check, submit for review |
+
+### Full Live Lifecycle Verification Test:
+Run the end-to-end integration test against live Google Firebase and Cloud Firestore:
+```bash
+# Authenticates real users via Google Identity Toolkit REST API, creates drafts in Firestore, runs Gemini review, executes reviewer approval, and verifies Firestore audit records:
+python -m app.scripts.test_live_firebase_workflow
+```
+
+---
+
+## 9. Critical Security & Deployment Advisory
+
+> [!CAUTION]
+> **Gemini API Key Rotation Required Prior to Public Hosting:**
+> The Gemini API key utilized during development was transmitted in chat sessions and is flagged as exposed. Before deploying this project to a publicly accessible host (e.g. Vercel or Render production domain), generate a new API key in Google AI Studio, update `backend/.env` with the new key, and revoke the previous key.
+

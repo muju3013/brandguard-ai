@@ -14,6 +14,8 @@ class Settings(BaseModel):
     firebase_service_account_path: str = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY_PATH", "")
     use_firestore: bool = os.getenv("USE_FIRESTORE", "false").lower() in ("true", "1")
     
+    bootstrap_admin_email: str = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "")
+    
     # In production, demo authentication is strictly forbidden
     enable_demo_auth: bool = (
         False if os.getenv("ENVIRONMENT", "development").lower() in ("production", "prod")
@@ -34,6 +36,21 @@ class Settings(BaseModel):
     @property
     def is_production(self) -> bool:
         return self.environment in ("production", "prod")
+
+    @property
+    def resolved_service_account_path(self) -> str:
+        if not self.firebase_service_account_path:
+            return ""
+        if os.path.isabs(self.firebase_service_account_path) and os.path.exists(self.firebase_service_account_path):
+            return self.firebase_service_account_path
+        backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        candidate = os.path.join(backend_root, self.firebase_service_account_path)
+        if os.path.exists(candidate):
+            return candidate
+        cwd_candidate = os.path.abspath(self.firebase_service_account_path)
+        if os.path.exists(cwd_candidate):
+            return cwd_candidate
+        return self.firebase_service_account_path
 
     @property
     def cors_origins(self) -> list[str]:

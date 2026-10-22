@@ -262,7 +262,7 @@ export default function GuidelinesView({
               )}
             </div>
           </div>
-        ))}
+        )))}
       </div>
 
       {/* Add Rule Modal */}

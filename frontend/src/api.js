@@ -8,7 +8,7 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'https://brandguard-ai-zvud.onrender.com').replace(/\/$/, '');
 
 function getHeaders(token) {
   const headers = { 'Content-Type': 'application/json' };

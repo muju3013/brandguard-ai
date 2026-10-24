@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../api';
+import { formatCreatorEmail } from './DraftsStudioView';
 
 export default function ReviewerQueueView({
   user,
@@ -109,7 +110,7 @@ export default function ReviewerQueueView({
                   </div>
                   <h4 className="queue-card-title">{d.title}</h4>
                   <div className="card-bottom-row">
-                    <span className="card-creator">{d.creator_email}</span>
+                    <span className="card-creator">{formatCreatorEmail(d.creator_email)}</span>
                     <span className={`finding-count-pill ${d.findings.length > 0 ? 'has-flags' : 'clean'}`}>
                       {d.findings.length === 0 ? '0 Flags' : `${d.findings.length} Flags`}
                     </span>
@@ -130,7 +131,7 @@ export default function ReviewerQueueView({
                       <span>Campaign: <strong>{selectedDraft.campaign}</strong></span>
                       <span>Channel: <strong>{selectedDraft.channel}</strong></span>
                       <span>Audience: <strong>{selectedDraft.audience}</strong></span>
-                      <span>Creator: <strong>{selectedDraft.creator_email}</strong></span>
+                      <span>Creator: <strong>{formatCreatorEmail(selectedDraft.creator_email)}</strong></span>
                     </div>
                   </div>
                   <span className="status-pill status-in_review">In Review</span>

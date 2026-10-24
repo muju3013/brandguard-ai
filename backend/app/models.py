@@ -99,7 +99,11 @@ class Finding(BaseModel):
     confidence_or_status: Optional[str] = None
 
 class CheckResult(BaseModel):
-    outcome: Literal["compliant", "needs_revision", "insufficient_evidence", "clean", "advisory_flags"]
+    outcome: Literal[
+        "compliant", "needs_revision", "violations_found",
+        "insufficient_evidence", "guidelines_not_configured",
+        "assessment_incomplete", "clean", "advisory_flags"
+    ]
     findings: List[Finding] = Field(default_factory=list)
     deterministic_findings: List[Finding] = Field(default_factory=list)
     ai_findings: List[Finding] = Field(default_factory=list)
@@ -137,7 +141,7 @@ class Draft(BaseModel):
     campaign: str
     status: DraftStatusType = "draft"
     creator_id: str
-    creator_email: str
+    creator_email: Optional[str] = "Creator email unavailable"
     findings: List[Finding] = Field(default_factory=list)
     deterministic_findings: List[Finding] = Field(default_factory=list)
     ai_findings: List[Finding] = Field(default_factory=list)

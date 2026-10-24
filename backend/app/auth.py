@@ -47,12 +47,28 @@ def verify_firebase_or_demo_token(token: str) -> dict:
         if membership:
             return {"uid": membership.user_id, "email": membership.email}
         
-        # Allow email-based demo tokens
+        # Allow email-based demo tokens in non-production
         if "@" in identifier:
             return {"uid": f"user_{identifier.split('@')[0]}", "email": identifier}
         
-        return {"uid": identifier, "email": f"{identifier}@example.com"}
+        # Check known demo users
+        demo_map = {
+            "user_admin_1": {"uid": "user_admin_1", "email": "sarah.admin@acme.com"},
+            "user_reviewer_1": {"uid": "user_reviewer_1", "email": "alex.reviewer@acme.com"},
+            "user_creator_1": {"uid": "user_creator_1", "email": "jordan.creator@acme.com"},
+            "user_beta_creator": {"uid": "user_beta_creator", "email": "dave.creator@betahealth.com"},
+            "user_beta_admin": {"uid": "user_beta_admin", "email": "carol.admin@betahealth.com"}
+        }
+        if identifier in demo_map:
+            return demo_map[identifier]
 
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Unknown demo identity '{identifier}'. Demo fallback accounts are strictly bounded.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    # Resolve active Firebase Admin app instance
     import app.auth as self_mod
     active_fb_app = getattr(self_mod, "firebase_app", None)
 
@@ -65,13 +81,27 @@ def verify_firebase_or_demo_token(token: str) -> dict:
             headers={"WWW-Authenticate": "Bearer"}
         )
 
+    if not active_fb_app:
+        active_fb_app = get_firebase_app()
+
     # Live Firebase ID Token Verification
     if active_fb_app and firebase_auth:
         try:
             decoded = firebase_auth.verify_id_token(token, app=active_fb_app)
+            uid = decoded.get("uid")
+            email = decoded.get("email")
+            # If email claim is not present in token payload, query Firebase Admin user record
+            if not email:
+                try:
+                    user_record = firebase_auth.get_user(uid, app=active_fb_app)
+                    email = user_record.email
+                except Exception as user_err:
+                    logger.warning(f"Could not fetch Firebase user record for UID {uid}: {user_err}")
+                    email = None
+
             return {
-                "uid": decoded.get("uid"),
-                "email": decoded.get("email", f"{decoded.get('uid')}@firebase.user")
+                "uid": uid,
+                "email": email or "Creator email unavailable"
             }
         except Exception as e:
             logger.error(f"Firebase ID token verification failed: {e}")
@@ -81,14 +111,11 @@ def verify_firebase_or_demo_token(token: str) -> dict:
                 headers={"WWW-Authenticate": "Bearer"}
             )
 
-    # If Firebase Admin is not configured but a non-demo bearer token was sent in dev
-    if settings.enable_demo_auth and not settings.is_production:
-        # Dev fallback: treat token as user identifier if demo auth is enabled
-        return {"uid": token[:32], "email": f"{token[:12]}@example.com"}
-
+    # Fail closed: never substring a JWT into a fake email address
+    logger.error("Request blocked: Firebase Admin SDK credentials are not configured on server.")
     raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Firebase authentication is not configured on the server and demo auth is disabled.",
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Server authentication service is currently unconfigured. Live Firebase Admin credentials are required.",
         headers={"WWW-Authenticate": "Bearer"}
     )
 
@@ -111,14 +138,24 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> Authenticat
     email = decoded["email"]
 
     # Authoritative server-side lookup of user's organisation & role
-    membership = db.get_membership(uid) or db.get_membership(email)
+    membership = db.get_membership(uid) or (db.get_membership(email) if email and "@" in email else None)
 
-    if not membership:
+    if membership:
+        # Auto-repair corrupt legacy membership email if live verified token claims provide legitimate email
+        if email and not email.startswith("eyJ") and not email.endswith("@example.com") and membership.email != email:
+            logger.info(f"Repairing legacy membership email for {uid} from '{membership.email}' to verified '{email}'")
+            membership = db.set_membership(
+                user_id=membership.user_id,
+                email=email,
+                org_id=membership.org_id,
+                role=membership.role
+            )
+    else:
         # First-time user onboarding:
         # Check if the user matches the configured bootstrap admin email
         is_bootstrap_admin = bool(
             settings.bootstrap_admin_email and
-            email.lower() == settings.bootstrap_admin_email.strip().lower()
+            email and email.lower() == settings.bootstrap_admin_email.strip().lower()
         )
         role = "admin" if is_bootstrap_admin else "creator"
 
@@ -126,11 +163,11 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> Authenticat
         org_id = target_org.id if target_org else "org_inkloom_judge"
         membership = db.set_membership(
             user_id=uid,
-            email=email,
+            email=email if (email and "@" in email) else f"user_{uid[:8]}@workspace.local",
             org_id=org_id,
             role=role
         )
-        logger.info(f"Onboarded new user {email} (UID: {uid}) to org {org_id} with role '{role}'.")
+        logger.info(f"Onboarded new user {membership.email} (UID: {uid}) to org {org_id} with role '{role}'.")
 
     return AuthenticatedUser(
         user_id=membership.user_id,

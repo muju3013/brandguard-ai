@@ -12,6 +12,7 @@ class Settings(BaseModel):
 
     firebase_project_id: str = os.getenv("FIREBASE_PROJECT_ID", "")
     firebase_service_account_path: str = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY_PATH", "")
+    firebase_service_account_json: str = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", ""))
     use_firestore: bool = os.getenv("USE_FIRESTORE", "false").lower() in ("true", "1")
     
     bootstrap_admin_email: str = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "")
@@ -24,7 +25,7 @@ class Settings(BaseModel):
     
     # Phase 3: Gemini AI Settings (Server-side only — never exposed to client)
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
     gemini_timeout_seconds: float = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "15.0"))
     gemini_max_retries: int = int(os.getenv("GEMINI_MAX_RETRIES", "2"))
     gemini_enabled: bool = os.getenv("GEMINI_ENABLED", "true").lower() in ("true", "1")

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { formatCreatorEmail } from './DraftsStudioView';
 
-export default function AuditTrailView({ auditLogs, onRefresh }) {
+export default function AuditTrailView({ auditLogs = [], loading = false, error = '', onRefresh }) {
   const [filterAction, setFilterAction] = useState('all');
   const [filterEntity, setFilterEntity] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
@@ -9,8 +10,8 @@ export default function AuditTrailView({ auditLogs, onRefresh }) {
     const matchesAction = filterAction === 'all' || log.action === filterAction;
     const matchesEntity =
       !filterEntity.trim() ||
-      log.entity_id.toLowerCase().includes(filterEntity.toLowerCase()) ||
-      log.actor_email.toLowerCase().includes(filterEntity.toLowerCase());
+      (log.entity_id && log.entity_id.toLowerCase().includes(filterEntity.toLowerCase())) ||
+      (log.actor_email && log.actor_email.toLowerCase().includes(filterEntity.toLowerCase()));
     return matchesAction && matchesEntity;
   });
 
@@ -24,8 +25,13 @@ export default function AuditTrailView({ auditLogs, onRefresh }) {
             revisions, and guideline version updates.
           </p>
         </div>
-        <button className="btn-secondary btn-sm" onClick={onRefresh}>
-          ↻ Refresh Trail
+        <button
+          className="btn-secondary btn-sm"
+          onClick={onRefresh}
+          disabled={loading}
+          aria-label="Refresh audit trail"
+        >
+          {loading ? '↻ Refreshing...' : '↻ Refresh Trail'}
         </button>
       </div>
 
@@ -57,55 +63,102 @@ export default function AuditTrailView({ auditLogs, onRefresh }) {
         </div>
       </div>
 
-      <div className="audit-table-wrapper">
-        <table className="audit-table">
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Action</th>
-              <th>Entity</th>
-              <th>Actor</th>
-              <th>Role</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredLogs.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="table-empty-cell">
-                  No audit records match the current filters.
-                </td>
-              </tr>
-            ) : (
-              filteredLogs.map((log) => (
-                <tr key={log.id} onClick={() => setSelectedLog(log)} className="clickable-row">
-                  <td className="timestamp-cell">
-                    {new Date(log.timestamp).toLocaleString()}
-                  </td>
-                  <td>
-                    <span className={`action-badge action-${log.action}`}>
-                      {log.action.replace('_', ' ').toUpperCase()}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="entity-type-badge">{log.entity_type}</span>{' '}
-                    <code>{log.entity_id}</code>
-                  </td>
-                  <td className="actor-email-cell">{log.actor_email}</td>
-                  <td>
-                    <span className={`role-badge role-${log.actor_role}`}>
-                      {log.actor_role.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="details-summary-cell">
-                    {JSON.stringify(log.details)}
-                  </td>
+      {loading && auditLogs.length === 0 ? (
+        <div className="audit-state-card audit-loading-card" role="status">
+          <div className="loading-spinner"></div>
+          <div className="audit-state-content">
+            <h4>Loading Governance Audit Trail...</h4>
+            <p>Fetching authorized workspace governance records from secure audit store.</p>
+          </div>
+        </div>
+      ) : error && auditLogs.length === 0 ? (
+        <div className="audit-state-card audit-error-card" role="alert">
+          <div className="audit-error-icon" aria-hidden="true">⚠️</div>
+          <div className="audit-state-content">
+            <h4>Unable to Load Audit Trail</h4>
+            <p>{error}</p>
+          </div>
+          {onRefresh && (
+            <button className="btn-secondary btn-sm" onClick={onRefresh}>
+              ↻ Retry Loading
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="audit-error-banner" role="alert">
+              <span>⚠️ API Error: {error}</span>
+              {onRefresh && (
+                <button className="btn-secondary btn-sm" onClick={onRefresh}>
+                  ↻ Retry
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="audit-table-wrapper">
+            <table className="audit-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Action</th>
+                  <th>Entity</th>
+                  <th>Actor</th>
+                  <th>Role</th>
+                  <th>Details</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {loading && auditLogs.length > 0 ? (
+                  <tr>
+                    <td colSpan={6} className="table-loading-cell">
+                      <div className="table-inline-loader">
+                        <div className="loading-spinner-sm"></div>
+                        <span>Refreshing audit trail records...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="table-empty-cell">
+                      {auditLogs.length === 0
+                        ? 'No governance audit records found in this workspace yet. Activity will appear here automatically.'
+                        : 'No audit records match the current filters.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLogs.map((log) => (
+                    <tr key={log.id} onClick={() => setSelectedLog(log)} className="clickable-row">
+                      <td className="timestamp-cell">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </td>
+                      <td>
+                        <span className={`action-badge action-${log.action}`}>
+                          {log.action.replace('_', ' ').toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="entity-type-badge">{log.entity_type}</span>{' '}
+                        <code>{log.entity_id}</code>
+                      </td>
+                      <td className="actor-email-cell">{formatCreatorEmail(log.actor_email)}</td>
+                      <td>
+                        <span className={`role-badge role-${log.actor_role}`}>
+                          {log.actor_role.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="details-summary-cell">
+                        {JSON.stringify(log.details)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {selectedLog && (
         <div className="modal-backdrop">
@@ -118,7 +171,7 @@ export default function AuditTrailView({ auditLogs, onRefresh }) {
               <p><strong>Event ID:</strong> <code>{selectedLog.id}</code></p>
               <p><strong>Timestamp:</strong> {new Date(selectedLog.timestamp).toISOString()}</p>
               <p><strong>Action:</strong> <span className={`action-badge action-${selectedLog.action}`}>{selectedLog.action}</span></p>
-              <p><strong>Actor:</strong> {selectedLog.actor_email} ({selectedLog.actor_id})</p>
+              <p><strong>Actor:</strong> {formatCreatorEmail(selectedLog.actor_email)} ({selectedLog.actor_id})</p>
               <p><strong>Role:</strong> {selectedLog.actor_role}</p>
               <p><strong>Entity:</strong> {selectedLog.entity_type} · <code>{selectedLog.entity_id}</code></p>
               <label>Event Metadata Payload</label>

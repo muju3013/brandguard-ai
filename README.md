@@ -167,12 +167,12 @@ cd backend
 .\.venv\Scripts\python.exe -m app.scripts.provision_judge_accounts \
   --org-id org_inkloom_judge \
   --org-name "Inkloom Evaluation Brands" \
-  --password "BrandGuard2026!Judge"
+  --password "<YOUR_SECURE_PASSWORD>"
 ```
 
 ### Generated Judge Credentials:
 - **Organisation:** `Inkloom Evaluation Brands` (`org_inkloom_judge`)
-- **Password:** `BrandGuard2026!Judge`
+- **Password:** `<Configured securely during provisioning or via environment>`
 - **1. Admin Judge:** `judge.admin@inkloom-brandguard.com` (Rule library management, member roles, audit logs)
 - **2. Reviewer Judge:** `judge.reviewer@inkloom-brandguard.com` (Approve drafts, request revisions with notes)
 - **3. Creator Judge:** `judge.creator@inkloom-brandguard.com` (Draft marketing text, run Gemini pre-check, submit to queue)
@@ -188,41 +188,49 @@ cd backend
 .\.venv\Scripts\pytest.exe -v
 ```
 
-### Exact Backend Test Results (31 Tests Passing):
+### Exact Backend Test Results (39 Tests Passing):
 ```
-tests/test_brandguard.py::test_phase1_health PASSED                      [  3%]
-tests/test_brandguard.py::test_phase1_review_endpoint PASSED             [  6%]
-tests/test_brandguard.py::test_unauthenticated_requests_rejected PASSED  [  9%]
-tests/test_brandguard.py::test_server_authoritative_user_profile PASSED  [ 12%]
-tests/test_brandguard.py::test_creator_cannot_approve_or_request_changes PASSED [ 16%]
-tests/test_brandguard.py::test_creator_cannot_manage_guidelines PASSED   [ 19%]
-tests/test_brandguard.py::test_reviewer_cannot_create_drafts PASSED      [ 22%]
-tests/test_brandguard.py::test_tenant_isolation_drafts PASSED            [ 25%]
-tests/test_brandguard.py::test_tenant_isolation_guidelines PASSED        [ 29%]
-tests/test_brandguard.py::test_tenant_isolation_audit_logs PASSED        [ 32%]
-tests/test_brandguard.py::test_rule_versioning_and_history PASSED        [ 35%]
-tests/test_brandguard.py::test_deterministic_findings_using_active_rules_only PASSED [ 38%]
-tests/test_brandguard.py::test_full_governance_review_workflow PASSED    [ 41%]
-tests/test_gemini_review.py::test_gemini_malformed_ai_output PASSED      [ 45%]
-tests/test_gemini_review.py::test_gemini_fabricated_rule_id_rejected PASSED [ 48%]
-tests/test_gemini_review.py::test_gemini_stale_rule_version_rejected PASSED [ 51%]
-tests/test_gemini_review.py::test_gemini_prompt_injection_defense PASSED [ 54%]
-tests/test_gemini_review.py::test_gemini_unavailable_fallback PASSED     [ 58%]
-tests/test_gemini_review.py::test_gemini_cross_tenant_evidence_isolation PASSED [ 61%]
-tests/test_gemini_review.py::test_gemini_insufficient_evidence_unsupported_claim PASSED [ 64%]
-tests/test_gemini_review.py::test_gemini_grounded_successful_review PASSED [ 67%]
-tests/test_gemini_review.py::test_real_gemini_controlled_live_call PASSED [ 70%]
-tests/test_production_security.py::test_production_mode_rejects_demo_tokens PASSED [ 74%]
-tests/test_production_security.py::test_production_mode_blocks_demo_users_endpoint PASSED [ 77%]
-tests/test_production_security.py::test_production_fail_closed_when_firebase_unavailable PASSED [ 80%]
-tests/test_production_security.py::test_rbac_creator_cannot_review_or_edit_guidelines PASSED [ 83%]
-tests/test_production_security.py::test_rbac_reviewer_cannot_create_drafts_or_edit_guidelines PASSED [ 87%]
-tests/test_production_security.py::test_tenant_isolation_cross_tenant_access_blocked PASSED [ 90%]
-tests/test_production_security.py::test_rate_limiting_triggers_429 PASSED [ 93%]
-tests/test_production_security.py::test_production_error_handler_masks_internal_tracebacks PASSED [ 96%]
-tests/test_production_security.py::test_end_to_end_review_workflow_and_audit_persistence PASSED [100%]
+tests/test_brandguard.py::test_phase1_health PASSED                      [  2%]
+tests/test_brandguard.py::test_phase1_review_endpoint PASSED             [  5%]
+tests/test_brandguard.py::test_unauthenticated_requests_rejected PASSED  [  7%]
+tests/test_brandguard.py::test_server_authoritative_user_profile PASSED  [ 10%]
+tests/test_brandguard.py::test_creator_cannot_approve_or_request_changes PASSED [ 12%]
+tests/test_brandguard.py::test_creator_cannot_manage_guidelines PASSED   [ 15%]
+tests/test_brandguard.py::test_reviewer_cannot_create_drafts PASSED      [ 17%]
+tests/test_brandguard.py::test_tenant_isolation_drafts PASSED            [ 20%]
+tests/test_brandguard.py::test_tenant_isolation_guidelines PASSED        [ 23%]
+tests/test_brandguard.py::test_tenant_isolation_audit_logs PASSED        [ 25%]
+tests/test_brandguard.py::test_rule_versioning_and_history PASSED        [ 28%]
+tests/test_brandguard.py::test_deterministic_findings_using_active_rules_only PASSED [ 30%]
+tests/test_brandguard.py::test_full_governance_review_workflow PASSED    [ 33%]
+tests/test_gemini_review.py::test_gemini_malformed_ai_output PASSED      [ 35%]
+tests/test_gemini_review.py::test_gemini_fabricated_rule_id_rejected PASSED [ 38%]
+tests/test_gemini_review.py::test_gemini_stale_rule_version_rejected PASSED [ 41%]
+tests/test_gemini_review.py::test_gemini_prompt_injection_defense PASSED [ 43%]
+tests/test_gemini_review.py::test_gemini_unavailable_fallback PASSED     [ 46%]
+tests/test_gemini_review.py::test_gemini_cross_tenant_evidence_isolation PASSED [ 48%]
+tests/test_gemini_review.py::test_gemini_insufficient_evidence_unsupported_claim PASSED [ 51%]
+tests/test_gemini_review.py::test_gemini_grounded_successful_review PASSED [ 53%]
+tests/test_gemini_review.py::test_real_gemini_controlled_live_call PASSED [ 56%]
+tests/test_production_security.py::test_production_mode_rejects_demo_tokens PASSED [ 58%]
+tests/test_production_security.py::test_production_mode_blocks_demo_users_endpoint PASSED [ 61%]
+tests/test_production_security.py::test_production_fail_closed_when_firebase_unavailable PASSED [ 64%]
+tests/test_production_security.py::test_rbac_creator_cannot_review_or_edit_guidelines PASSED [ 66%]
+tests/test_production_security.py::test_rbac_reviewer_cannot_create_drafts_or_edit_guidelines PASSED [ 69%]
+tests/test_production_security.py::test_tenant_isolation_cross_tenant_access_blocked PASSED [ 71%]
+tests/test_production_security.py::test_rate_limiting_triggers_429 PASSED [ 74%]
+tests/test_production_security.py::test_production_error_handler_masks_internal_tracebacks PASSED [ 76%]
+tests/test_production_security.py::test_end_to_end_review_workflow_and_audit_persistence PASSED [ 79%]
+tests/test_production_security.py::test_creator_identity_never_jwt_substring PASSED [ 82%]
+tests/test_production_security.py::test_corrupt_creator_email_safely_sanitized_and_repaired PASSED [ 84%]
+tests/test_production_security.py::test_zero_guidelines_returns_guidelines_not_configured_and_blocks_submission PASSED [ 87%]
+tests/test_production_security.py::test_creator_cannot_approve_own_draft PASSED [ 89%]
+tests/test_production_security.py::test_reviewer_can_request_changes_and_creator_can_revise PASSED [ 92%]
+tests/test_production_security.py::test_audit_logs_role_based_access_admin_reviewer_creator PASSED [ 94%]
+tests/test_production_security.py::test_audit_logs_strict_tenant_isolation_never_leaks_cross_tenant PASSED [ 97%]
+tests/test_production_security.py::test_audit_logs_lifecycle_events_complete_coverage PASSED [100%]
 
-======================== 31 passed, 1 warning in 6.13s ========================
+======================== 39 passed, 1 warning in 8.77s ========================
 ```
 
 ### Exact Frontend Build Results:
@@ -236,9 +244,9 @@ transforming...
 rendering chunks...
 computing gzip size...
 dist/index.html                   0.36 kB │ gzip:  0.26 kB
-dist/assets/index-Cozyx3Ga.css   30.37 kB │ gzip:  6.11 kB
-dist/assets/index--HdbCyW-.js   372.23 kB │ gzip: 95.04 kB
-✓ built in 1.47s
+dist/assets/index-OJaiLuaM.css   38.67 kB │ gzip:  7.53 kB
+dist/assets/index-J0GN4Z9P.js   385.35 kB │ gzip: 98.80 kB
+✓ built in 1.29s
 ```
 
 ---
@@ -269,9 +277,9 @@ Additionally, `BOOTSTRAP_ADMIN_EMAIL` in `.env` automatically promotes the speci
 ### Evaluation & Judge Accounts:
 | Role | Email | Password | Access Capabilities |
 | :--- | :--- | :--- | :--- |
-| **Admin** | `judge.admin@inkloom-brandguard.com` | `BrandGuard2026!Judge` | Create/edit rules, manage team, view tamper-evident audit logs |
-| **Reviewer** | `judge.reviewer@inkloom-brandguard.com` | `BrandGuard2026!Judge` | Review pending queue, approve/request changes with notes |
-| **Creator** | `judge.creator@inkloom-brandguard.com` | `BrandGuard2026!Judge` | Submit drafts, run deterministic + Gemini AI check, submit for review |
+| **Admin** | `judge.admin@inkloom-brandguard.com` | `[Set securely via provisioning script]` | Create/edit rules, manage team, view tamper-evident audit logs |
+| **Reviewer** | `judge.reviewer@inkloom-brandguard.com` | `[Set securely via provisioning script]` | Review pending queue, approve/request changes with notes |
+| **Creator** | `judge.creator@inkloom-brandguard.com` | `[Set securely via provisioning script]` | Submit drafts, run deterministic + Gemini AI check, submit for review |
 
 ### Full Live Lifecycle Verification Test:
 Run the end-to-end integration test against live Google Firebase and Cloud Firestore:

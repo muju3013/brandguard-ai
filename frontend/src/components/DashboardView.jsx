@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCreatorEmail } from './DraftsStudioView';
 
 export default function DashboardView({
   user,
@@ -140,7 +141,7 @@ export default function DashboardView({
                       <span className="timeline-time">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     <p className="timeline-actor">
-                      <strong>{log.actor_email}</strong> ({log.actor_role}) on {log.entity_type} <code>{log.entity_id}</code>
+                      <strong>{formatCreatorEmail(log.actor_email)}</strong> ({log.actor_role}) on {log.entity_type} <code>{log.entity_id}</code>
                     </p>
                   </div>
                 </div>

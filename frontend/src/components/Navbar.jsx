@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCreatorEmail } from './DraftsStudioView';
 
 export default function Navbar({
   user,
@@ -86,7 +87,7 @@ export default function Navbar({
               <span className={`role-badge ${roleColors[user.role] || ''}`}>
                 {user.role?.toUpperCase()}
               </span>
-              <span className="user-email-text" title={user.email}>{user.email}</span>
+              <span className="user-email-text" title={user.email}>{formatCreatorEmail(user.email)}</span>
             </div>
 
             {demoUsers && demoUsers.length > 0 && (

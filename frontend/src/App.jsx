@@ -18,6 +18,8 @@ export default function App() {
   const [drafts, setDrafts] = useState([]);
   const [guidelines, setGuidelines] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState('');
 
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -37,10 +39,29 @@ export default function App() {
     }
   }, []);
 
+  // Dedicated audit logs refresh function
+  const refreshAuditLogs = useCallback(async (authToken) => {
+    const activeToken = authToken || token;
+    if (!activeToken) return;
+    setAuditLoading(true);
+    setAuditError('');
+    try {
+      const logs = await api.fetchAuditLogs(activeToken);
+      setAuditLogs(logs || []);
+    } catch (err) {
+      console.error('Failed to load audit logs:', err);
+      setAuditError(err.message || 'Failed to load audit logs.');
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [token]);
+
   // Refresh workspace data
   const loadWorkspaceData = useCallback(async (authToken, fallbackUser = null) => {
     if (!authToken) return;
     setGlobalError('');
+    setAuditLoading(true);
+    setAuditError('');
 
     try {
       // 1. Authoritative server-side profile fetch
@@ -53,12 +74,11 @@ export default function App() {
       setUser(authenticatedUser);
 
       // 2. Fetch role-appropriate workspace resources using Promise.allSettled
-      // Prevents 403 on non-admin users from breaking the entire application
-      const isUserAdmin = profileData.role === 'admin';
+      // Audit trail is viewable by Admin, Reviewer, and Creator within their workspace
       const [draftsRes, guidelinesRes, auditRes] = await Promise.allSettled([
         api.fetchDrafts(authToken),
         api.fetchGuidelines(authToken),
-        isUserAdmin ? api.fetchAuditLogs(authToken) : Promise.resolve([])
+        api.fetchAuditLogs(authToken)
       ]);
 
       if (draftsRes.status === 'fulfilled') {
@@ -75,11 +95,14 @@ export default function App() {
 
       if (auditRes.status === 'fulfilled') {
         setAuditLogs(auditRes.value || []);
+        setAuditError('');
       } else {
         console.warn('Failed to load audit logs:', auditRes.reason);
+        setAuditError(auditRes.reason?.message || 'Failed to load audit records.');
       }
     } catch (err) {
       console.error('Failed to load workspace data:', err);
+      setAuditError(err.message || 'Failed to load workspace data.');
 
       // Ensure the navbar retains the authenticated identity if Firebase login succeeded
       if (fallbackUser) {
@@ -102,8 +125,17 @@ export default function App() {
       } else {
         setGlobalError(err.message || 'Error connecting to BrandGuard backend.');
       }
+    } finally {
+      setAuditLoading(false);
     }
   }, []);
+
+  // Auto-refresh audit trail when navigating to audit tab
+  useEffect(() => {
+    if (token && currentTab === 'audit') {
+      refreshAuditLogs(token);
+    }
+  }, [currentTab, token, refreshAuditLogs]);
 
   // Listen to auth changes
   useEffect(() => {
@@ -170,6 +202,8 @@ export default function App() {
     setDrafts([]);
     setGuidelines([]);
     setAuditLogs([]);
+    setAuditError('');
+    setAuditLoading(false);
     setIsAuthModalOpen(true);
   }
 
@@ -273,7 +307,9 @@ export default function App() {
         {currentTab === 'audit' && (
           <AuditTrailView
             auditLogs={auditLogs}
-            onRefresh={() => loadWorkspaceData(token, user)}
+            loading={auditLoading}
+            error={auditError}
+            onRefresh={() => refreshAuditLogs(token)}
           />
         )}
 

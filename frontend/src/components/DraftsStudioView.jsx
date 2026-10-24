@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 
+export function formatCreatorEmail(email) {
+  if (!email || typeof email !== 'string' || email.startsWith('eyJ') || email.includes('undefined')) {
+    return 'Creator email unavailable';
+  }
+  return email;
+}
+
 export default function DraftsStudioView({
   user,
   token,
@@ -291,7 +298,7 @@ export default function DraftsStudioView({
                   <span className="context-tag">📢 Campaign: <strong>{selectedDraft.campaign}</strong></span>
                   <span className="context-tag">📱 Channel: <strong>{selectedDraft.channel}</strong></span>
                   <span className="context-tag">🎯 Audience: <strong>{selectedDraft.audience}</strong></span>
-                  <span className="context-tag">👤 Creator: <strong>{selectedDraft.creator_email}</strong></span>
+                  <span className="context-tag">👤 Creator: <strong>{formatCreatorEmail(selectedDraft.creator_email)}</strong></span>
                 </div>
               </div>
 
@@ -400,23 +407,48 @@ export default function DraftsStudioView({
               <div className={`assessment-banner assessment-${selectedDraft.outcome}`}>
                 <div className="assessment-left">
                   <span className="assessment-icon">
-                    {selectedDraft.outcome === 'compliant' ? '🛡️' : selectedDraft.outcome === 'insufficient_evidence' ? '⚖️' : '⚠️'}
+                    {selectedDraft.outcome === 'compliant'
+                      ? '🛡️'
+                      : selectedDraft.outcome === 'guidelines_not_configured'
+                      ? '📋'
+                      : selectedDraft.outcome === 'insufficient_evidence'
+                      ? '⚖️'
+                      : selectedDraft.outcome === 'assessment_incomplete'
+                      ? '⏳'
+                      : '⚠️'}
                   </span>
                   <div>
                     <span className="assessment-label">Governance Pre-Check Assessment</span>
                     <strong className="assessment-value">
-                      {selectedDraft.outcome === 'compliant'
-                        ? 'Compliant (Verified Against Active Guidelines)'
+                      {selectedDraft.outcome === 'guidelines_not_configured'
+                        ? 'Guidelines Not Configured'
+                        : selectedDraft.outcome === 'compliant'
+                        ? 'Compliant'
                         : selectedDraft.outcome === 'insufficient_evidence'
                         ? 'Insufficient Evidence / Human Review Required'
-                        : 'Needs Revision (Guideline Flags Detected)'}
+                        : selectedDraft.outcome === 'assessment_incomplete'
+                        ? 'Assessment Incomplete'
+                        : 'Violations Found'}
                     </strong>
+                    <div className="assessment-subtext">
+                      {selectedDraft.outcome === 'guidelines_not_configured'
+                        ? 'No active guidelines are defined in this workspace. Pre-check cannot verify compliance.'
+                        : selectedDraft.outcome === 'compliant'
+                        ? 'Verified against active guidelines with 0 policy violations.'
+                        : selectedDraft.outcome === 'insufficient_evidence'
+                        ? 'Promotional claims lack approved evidence in guidelines. Human review required.'
+                        : selectedDraft.outcome === 'assessment_incomplete'
+                        ? 'Evaluation could not be fully completed.'
+                        : `${selectedDraft.findings?.length || 0} policy violation(s) detected. Content must be revised.`}
+                    </div>
                   </div>
                 </div>
                 <div className="assessment-right">
                   <span className={`ai-status-pill status-${selectedDraft.ai_status || 'fallback'}`}>
                     {selectedDraft.ai_status === 'completed'
-                      ? '✨ Gemini Grounded AI Active'
+                      ? `✨ Gemini Grounded AI Active (${selectedDraft.ai_model || 'gemini-3-flash-preview'})`
+                      : selectedDraft.ai_status === 'fallback_deterministic_only'
+                      ? '⚡ AI Review Unavailable — Deterministic Check Only'
                       : '⚡ Deterministic Fallback'}
                   </span>
                 </div>

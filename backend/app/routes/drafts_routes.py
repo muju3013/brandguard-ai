@@ -10,7 +10,43 @@ from app.checker import evaluate_draft_against_guidelines
 from app.db import db, now_iso
 from app.rate_limiter import rate_limiter_general, rate_limiter_check
 
+from app.firebase_setup import get_firebase_app
+try:
+    from firebase_admin import auth as firebase_auth
+except ImportError:
+    firebase_auth = None
+
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
+
+def _resolve_and_repair_creator(draft: Draft) -> Draft:
+    """
+    Ensures creator identity is authoritative and never a raw JWT string or token substring.
+    Repairs legacy records where creator_id can be authoritatively resolved.
+    """
+    raw_email = draft.creator_email or ""
+    # Corrupt condition: starts with eyJ, contains substring fragment, or missing
+    if not raw_email or raw_email.startswith("eyJ") or (raw_email.endswith("@example.com") and not draft.creator_id.startswith("user_")):
+        resolved_email = None
+        mem = db.get_membership(draft.creator_id)
+        if mem and mem.email and not mem.email.startswith("eyJ") and not mem.email.endswith("@example.com"):
+            resolved_email = mem.email
+        else:
+            fb_app = get_firebase_app()
+            if fb_app and firebase_auth:
+                try:
+                    u = firebase_auth.get_user(draft.creator_id, app=fb_app)
+                    if u.email and not u.email.startswith("eyJ"):
+                        resolved_email = u.email
+                except Exception:
+                    pass
+
+        draft.creator_email = resolved_email or "Creator email unavailable"
+        if resolved_email:
+            try:
+                db.save_draft(draft)
+            except Exception:
+                pass
+    return draft
 
 @router.get("", response_model=List[Draft])
 def list_drafts(
@@ -22,7 +58,8 @@ def list_drafts(
     Tenant isolation is strictly enforced.
     """
     creator_id = user.user_id if my_drafts_only else None
-    return db.list_drafts(org_id=user.org_id, creator_id=creator_id)
+    drafts = db.list_drafts(org_id=user.org_id, creator_id=creator_id)
+    return [_resolve_and_repair_creator(d) for d in drafts]
 
 @router.get("/{draft_id}", response_model=Draft)
 def get_draft(
@@ -36,7 +73,7 @@ def get_draft(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Draft not found in your organisation."
         )
-    return draft
+    return _resolve_and_repair_creator(draft)
 
 @router.post("", response_model=Draft, status_code=status.HTTP_201_CREATED, dependencies=[Depends(rate_limiter_general)])
 def create_draft(
@@ -66,7 +103,7 @@ def create_draft(
         campaign=req.campaign.strip(),
         status="draft",
         creator_id=user.user_id,
-        creator_email=user.email,
+        creator_email=user.email if (user.email and not user.email.startswith("eyJ")) else "Creator email unavailable",
         findings=check_result.findings,
         deterministic_findings=check_result.deterministic_findings,
         ai_findings=check_result.ai_findings,
@@ -278,6 +315,12 @@ def submit_draft(
         campaign=draft.campaign,
         include_ai=True
     )
+    if check_result.outcome == "guidelines_not_configured":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot submit draft for review: No active brand guidelines are configured in your workspace. Guidelines must be created and activated first."
+        )
+
     draft.findings = check_result.findings
     draft.deterministic_findings = check_result.deterministic_findings
     draft.ai_findings = check_result.ai_findings

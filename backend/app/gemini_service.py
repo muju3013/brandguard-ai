@@ -249,12 +249,16 @@ def evaluate_with_gemini(
 
     prompt = build_prompt_payload(draft_content, channel, audience, campaign, active_rules)
 
-    # Initialize Google GenAI client
+    # Initialize Google GenAI client with explicit minimum 10s deadline
+    timeout_ms = max(10000, int(settings.gemini_timeout_seconds * 1000))
     try:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=settings.gemini_api_key)
+        client = genai.Client(
+            api_key=settings.gemini_api_key,
+            http_options=types.HttpOptions(timeout=timeout_ms)
+        )
     except Exception as e:
         logger.error(f"Failed to initialize Google GenAI client: {e}")
         return (
@@ -265,13 +269,17 @@ def evaluate_with_gemini(
             "none"
         )
 
-    # Call Gemini with retry handling and timeout
-    model_name = settings.gemini_model
-    max_retries = max(1, settings.gemini_max_retries)
-    last_error = None
+    # Candidate models for resilience (prioritizing configured model then verified flash preview models)
+    configured_model = settings.gemini_model.strip()
+    fallback_candidates = ["gemini-3-flash-preview", "gemini-3.5-flash", "gemini-3.1-flash-lite"]
+    models_to_try = [configured_model] + [m for m in fallback_candidates if m != configured_model]
 
-    for attempt in range(max_retries):
+    last_error = None
+    successful_model = None
+
+    for model_name in models_to_try:
         try:
+            logger.info(f"Attempting Gemini semantic evaluation using model '{model_name}'...")
             response = client.models.generate_content(
                 model=model_name,
                 contents=prompt,
@@ -291,17 +299,19 @@ def evaluate_with_gemini(
             return findings, status, outcome, summary, model_name
 
         except Exception as e:
-            last_error = e
-            logger.warning(f"Gemini API call attempt {attempt + 1}/{max_retries} failed: {e}")
-            if attempt < max_retries - 1:
-                time.sleep(1.0)
+            # Mask API keys if present in error strings
+            err_msg = str(e)
+            if settings.gemini_api_key and settings.gemini_api_key in err_msg:
+                err_msg = err_msg.replace(settings.gemini_api_key, "[REDACTED_API_KEY]")
+            last_error = err_msg
+            logger.warning(f"Gemini call with model '{model_name}' failed: {err_msg}. Trying next candidate...")
 
-    # All retries exhausted -> Fallback to deterministic
-    logger.error(f"Gemini API unavailable after {max_retries} attempts: {last_error}")
+    # All candidate models failed -> Fallback to deterministic
+    logger.error(f"Gemini AI review unavailable across all models. Last error: {last_error}")
     return (
         [],
         "fallback_deterministic_only",
         "insufficient_evidence",
-        f"Gemini AI review was temporarily unavailable ({str(last_error)}). Fallback to deterministic checks.",
-        model_name
+        f"Gemini AI review was temporarily unavailable ({last_error}). Fallback to deterministic checks.",
+        configured_model
     )

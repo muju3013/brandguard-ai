@@ -23,6 +23,26 @@ def get_firebase_app():
             _firebase_app = firebase_admin.get_app()
             return _firebase_app
 
+        # 1. First priority: Inline service account JSON from environment variable (ideal for Render / Cloud)
+        raw_json = settings.firebase_service_account_json.strip()
+        if raw_json:
+            import json, base64
+            # Handle potential base64 encoded JSON
+            if not raw_json.startswith("{") and len(raw_json) > 50:
+                try:
+                    raw_json = base64.b64decode(raw_json).decode("utf-8")
+                except Exception:
+                    pass
+            try:
+                cert_dict = json.loads(raw_json)
+                cred = credentials.Certificate(cert_dict)
+                _firebase_app = firebase_admin.initialize_app(cred)
+                logger.info("Firebase Admin initialized from FIREBASE_SERVICE_ACCOUNT_JSON environment variable.")
+                return _firebase_app
+            except Exception as e:
+                logger.error(f"Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON: {e}")
+
+        # 2. Second priority: Service account key JSON file from disk
         key_path = settings.resolved_service_account_path
         if key_path and os.path.exists(key_path):
             cred = credentials.Certificate(key_path)

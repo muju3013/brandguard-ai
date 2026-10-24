@@ -55,14 +55,21 @@ class ReviewRequest(BaseModel):
 
 @app.get('/health')
 def health():
-    """Phase 1 backwards-compatible health check endpoint."""
+    """Phase 1 backwards-compatible and production diagnostic health endpoint."""
+    from app.firebase_setup import get_firebase_app
+    from app.db import db, FirestoreStore
+    is_firestore = isinstance(db, FirestoreStore)
     return {
         'status': 'ok',
+        'service': 'BrandGuard AI Backend',
         'environment': settings.environment,
         'mode': 'production' if settings.is_production else 'deterministic-demo',
         'phase': 3,
         'version': settings.version,
-        'gemini_configured': bool(settings.gemini_api_key and not settings.gemini_api_key.startswith("your_"))
+        'database': 'firestore' if is_firestore else 'in_memory',
+        'gemini_configured': bool(settings.gemini_api_key and not settings.gemini_api_key.startswith("your_")),
+        'gemini_model': settings.gemini_model,
+        'firebase_admin_initialized': bool(get_firebase_app())
     }
 
 @app.post('/review', dependencies=[Depends(rate_limiter_check)])

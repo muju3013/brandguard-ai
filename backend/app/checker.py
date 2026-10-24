@@ -70,14 +70,17 @@ def evaluate_draft_against_guidelines(
         if (aif.rule_id, aif.start, aif.end) not in det_keys:
             combined_findings.append(aif)
 
-    # 4. Resolve Final Preserved Outcome: Compliant | Needs Revision | Insufficient Evidence
+    # 4. Resolve Final Preserved Outcome: Compliant | Needs Revision | Insufficient Evidence | Guidelines Not Configured
     has_high = any(f.severity == "high" for f in combined_findings)
     has_insufficient = (
         ai_status == "insufficient_evidence" or
         any(f.confidence_or_status == "insufficient_evidence" for f in combined_findings)
     )
 
-    if has_high or any(f.severity == "high" for f in deterministic_findings):
+    if len(active_rules) == 0:
+        final_outcome = "guidelines_not_configured"
+        summary_text = "Guidelines Not Configured: No active guidelines exist for your organisation. Compliance could not be evaluated."
+    elif has_high or any(f.severity == "high" for f in deterministic_findings):
         final_outcome = "needs_revision"
         summary_text = f"Flagged {len(combined_findings)} governance issues ({len(deterministic_findings)} deterministic, {len(ai_findings)} AI)."
     elif has_insufficient:
@@ -88,7 +91,7 @@ def evaluate_draft_against_guidelines(
         summary_text = f"Identified {len(combined_findings)} advisory brand tone or style flags."
     else:
         final_outcome = "compliant"
-        summary_text = "No guideline violations detected. Pre-check clean against active guidelines."
+        summary_text = f"Compliant: Verified against {len(active_rules)} active guidelines with 0 violations."
 
     if ai_summary and ai_status != "disabled":
         summary_text = f"{summary_text} [{ai_summary}]"

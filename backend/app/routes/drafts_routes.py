@@ -387,7 +387,7 @@ def approve_draft(
     high_risk = any(f.severity == "high" for f in draft.findings)
     evidence_record = None
     if high_risk:
-        evidence_record = resolve_approval_evidence(user.org_id, draft.content, req.evidence_dossier_id, req.exception_reason)
+        evidence_record = resolve_approval_evidence(user.org_id, draft.content, req.evidence_dossier_id, req.exception_reason, [f for f in draft.findings if f.severity == "high"])
 
     draft.status = "approved"
     draft.review_notes = req.comments.strip()

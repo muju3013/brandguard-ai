@@ -13,6 +13,8 @@ export default function ReviewerQueueView({
   const [selectedDraftId, setSelectedDraftId] = useState(pendingDrafts[0]?.id || null);
   const [reviewComments, setReviewComments] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dossierId,setDossierId] = useState('');
+  const [exceptionReason,setExceptionReason] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -30,9 +32,10 @@ export default function ReviewerQueueView({
     setLoading(true);
     setErrorMessage('');
     try {
-      const res = await api.approveDraft(token, selectedDraft.id, reviewComments);
+      const res = await api.approveDraft(token, selectedDraft.id, reviewComments, dossierId.trim()||null, exceptionReason.trim()||null);
       await onRefreshDrafts();
       setReviewComments('');
+      setDossierId('');setExceptionReason('');
       setFeedbackMessage(`Approved draft "${selectedDraft.title}". ${res.publication_notice}`);
     } catch (err) {
       setErrorMessage(err.message || 'Approval failed.');
@@ -212,6 +215,13 @@ export default function ReviewerQueueView({
                     />
                   </div>
 
+                  {selectedDraft.findings.some(f=>f.severity==='high')&&<div className="form-group">
+                    <p><strong>High-risk approval protection:</strong> Supply a verified claim dossier ID (the exact dossier claim must appear in this draft), OR a detailed reviewer exception.</p>
+                    <label>Approved evidence dossier ID</label>
+                    <input value={dossierId} onChange={e=>setDossierId(e.target.value)} placeholder="claim_..." />
+                    <label>Reviewer-recorded exception (25+ characters)</label>
+                    <textarea rows={3} value={exceptionReason} onChange={e=>setExceptionReason(e.target.value)} placeholder="Explain approval of flagged content."/>
+                  </div>}
                   <div className="decision-buttons-row">
                     <button
                       className="btn-danger"

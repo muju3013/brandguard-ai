@@ -3,6 +3,7 @@ import { api } from './api';
 import { subscribeToAuthState, logoutUser, loginWithDemoIdentity, isDemoAuthEnabled } from './firebase';
 
 import Navbar from './components/Navbar';
+import Round3Studio from './components/Round3Studio';
 import AuthModal from './components/AuthModal';
 import DashboardView from './components/DashboardView';
 import DraftsStudioView from './components/DraftsStudioView';
@@ -312,6 +313,8 @@ export default function App() {
             onRefresh={() => refreshAuditLogs(token)}
           />
         )}
+
+        {currentTab === 'round3' && <Round3Studio user={user} token={token}/>}
 
         {currentTab === 'phase1' && (
           <Phase1SandboxView />

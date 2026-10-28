@@ -296,3 +296,60 @@ python -m app.scripts.test_live_firebase_workflow
 > **Gemini API Key Rotation Required Prior to Public Hosting:**
 > The Gemini API key utilized during development was transmitted in chat sessions and is flagged as exposed. Before deploying this project to a publicly accessible host (e.g. Vercel or Render production domain), generate a new API key in Google AI Studio, update `backend/.env` with the new key, and revoke the previous key.
 
+
+
+---
+
+## TechCircuit Round 3 — Verification branch (October 28, 2026)
+
+**Current status:** This section documents work on `round3-final-product`. It is not proof that Vercel/Render production deployments have been updated. Verify the GitHub Actions checks and redeploy before using the submission form.
+
+### Exactly three committed improvements
+
+1. **Visual creative and logo governance:** Admin can configure an approved HEX palette and upload a reference JPG/PNG logo (200 KB). Signed-in users can upload JPG/PNG creatives (4 MB, maximum 16 megapixels). Server checks dominant colours; deterministic prohibited-phrase matching works for user-entered creative text. When Gemini is available, the server requests logo comparison and guideline-grounded visual findings with normalized bounding-box coordinates. Logo recognition, image coordinates and colour heuristics are **advisory, not guaranteed**; no reliable image text OCR is claimed.
+2. **PDF/DOCX compliance review:** Signed-in users can upload up to 5 MB (25 PDF pages, 250 DOCX text sections); extract selectable PDF text and DOCX paragraphs/tables; run tenant-scoped active deterministic brand guidelines and download a location-linked CSV report from the UI. Scanned/empty PDF pages are explicitly reported as **unreviewed**. A scanned-page OCR pathway and semantic whole-document Gemini review are **not delivered**.
+3. **Evidence-backed claims and risk-gated approvals:** Admin-created/versioned dossiers store exact claim wording, source title, optional source URL, source excerpt, verification notes and verifier identity. For a draft with **detected high-severity findings**, the approval API now requires a same-tenant verified claim dossier whose claim appears in the draft **or** a documented reviewer exception of 25+ characters. Approval audit includes the dossier/version/evidence snapshot or the exception rationale. Caveat: currently the gate relies on existing high-severity findings; an unflagged risky phrase may escape this gate. Evidence is administrator-submitted, not independently validated by an external regulatory authority.
+
+### Reviewer / judge journey
+
+1. Sign in with a separately provisioned, authorised account; never expose active admin passwords.
+2. Admin: **Creative & Evidence Studio** → configure colour palette, reference logo, and verified claim dossiers.
+3. Creator: **Creative & Evidence Studio** → test an image creative and inspect visual findings and limitations; upload PDF/DOCX and download the location-linked issues CSV.
+4. Creator: create a draft under **Drafts & Pre-check**, include a deliberately prohibited claim, submit for review.
+5. Reviewer: visit **Reviewer Queue**; for high-risk findings enter a verified `claim_...` dossier ID or a detailed exception and review notes; approve or request changes. Confirm the actor, method and evidence snapshot in **Audit Trail**.
+
+### Local setup
+
+Install Python 3.11+ and Node 22+. Use a real, separately configured Firebase project for hosted workflows. Local memory storage exists for development/testing only.
+
+```sh
+cd backend
+python -m venv .venv
+# Activate your environment, then:
+pip install -r requirements.txt
+pytest -q
+uvicorn app.main:app --reload
+```
+
+In another terminal:
+
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+Set frontend `VITE_API_BASE_URL=http://localhost:8000` and the Firebase client env variables described above. For production configure `ENVIRONMENT=production`, `USE_FIRESTORE=true`, Firebase Admin credentials, and `GEMINI_API_KEY` on the Render backend; do not put Gemini secrets in Vite variables. Configure allowed CORS origins, and rebuild the Vercel frontend.
+
+### Safety / limits / known issues
+
+- Image reviews don't persist the uploaded image itself; brand palette/logo metadata persists in Firestore. Do not upload confidential or sensitive source material into a public judge demo.
+- The dossier source excerpt is stored by the admin, not independently fact-checked; verify legitimacy before release.
+- File limits must be exercised with malformed, empty, oversized, encrypted and scanned content.
+- High-risk evidence gate uses the latest draft findings; verify rule updates and concurrent reviewers before production use.
+- Browser screenshot testing, live Gemini image results, Render deployment, Firebase role provisioning and external judge login still require independent live verification.
+- Existing exposed demo credentials must be rotated and secure judge access must be provisioned separately.
+
+### Evidence of testing
+
+`.github/workflows/round3.yml` runs backend pytest and frontend Vite build on the feature branch / pull requests. CI outcomes must be checked in GitHub Actions and quoted accurately in the final PDF. Do **not** claim tests passed merely because the workflow file exists.

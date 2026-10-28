@@ -130,6 +130,8 @@ class DraftUpdateRequest(BaseModel):
 
 class ReviewDecisionRequest(BaseModel):
     comments: str = Field(min_length=3, max_length=2000)
+    evidence_dossier_id: Optional[str] = None
+    exception_reason: Optional[str] = Field(default=None, max_length=2000)
 
 class Draft(BaseModel):
     id: str

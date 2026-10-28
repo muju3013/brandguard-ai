@@ -300,15 +300,15 @@ python -m app.scripts.test_live_firebase_workflow
 
 ---
 
-## TechCircuit Round 3 — Verification branch (October 28, 2026)
+## TechCircuit Round 3 — Live QA verification (October 28, 2026)
 
-**Current status:** This section documents work on `round3-final-product`. It is not proof that Vercel/Render production deployments have been updated. Verify the GitHub Actions checks and redeploy before using the submission form.
+**Current status:** The three Round 3 feature groups have been merged to `main`. The frontend Vercel production domain `https://brandguard-ai-phi.vercel.app` was verified as `READY` on commit `0f9a5234eb4348443ef645e19d25f82802f7d291` before this documentation update. The signed-in app was also manually tested against its hosted API. Confirm backend Render commit separately before claiming that every backend patch is deployed.
 
 ### Exactly three committed improvements
 
 1. **Visual creative and logo governance:** Admin can configure an approved HEX palette and upload a reference JPG/PNG logo (200 KB). Signed-in users can upload JPG/PNG creatives (4 MB, maximum 16 megapixels). Server checks dominant colours; deterministic prohibited-phrase matching works for user-entered creative text. When Gemini is available, the server requests logo comparison and guideline-grounded visual findings with normalized bounding-box coordinates. Logo recognition, image coordinates and colour heuristics are **advisory, not guaranteed**; no reliable image text OCR is claimed.
 2. **PDF/DOCX compliance review:** Signed-in users can upload up to 5 MB (25 PDF pages, 250 DOCX text sections); extract selectable PDF text and DOCX paragraphs/tables; run tenant-scoped active deterministic brand guidelines and download a location-linked CSV report from the UI. Scanned/empty PDF pages are explicitly reported as **unreviewed**. A scanned-page OCR pathway and semantic whole-document Gemini review are **not delivered**.
-3. **Evidence-backed claims and risk-gated approvals:** Admin-created/versioned dossiers store exact claim wording, source title, optional source URL, source excerpt, verification notes and verifier identity. For a draft with **detected high-severity findings**, the approval API now requires a same-tenant verified claim dossier whose claim appears in the draft **or** a documented reviewer exception of 25+ characters. Approval audit includes the dossier/version/evidence snapshot or the exception rationale. Caveat: currently the gate relies on existing high-severity findings; an unflagged risky phrase may escape this gate. Evidence is administrator-submitted, not independently validated by an external regulatory authority.
+3. **Evidence-backed claims and risk-gated approvals:** Admin-created/versioned dossiers store exact claim wording, source title, optional source URL, source excerpt, verification notes and verifier identity. For a draft with **detected high-severity findings**, the approval API requires a same-tenant admin-created dossier whose claim appears in the draft **and covers all distinct high-severity matches**, or a documented reviewer exception of 25+ characters. Approval audit includes the dossier/version/evidence snapshot or the exception rationale. Caveat: currently the gate relies on existing high-severity findings; an unflagged risky phrase may escape this gate. Evidence is administrator-submitted, not independently validated by an external regulatory authority.
 
 ### Reviewer / judge journey
 
@@ -347,9 +347,30 @@ Set frontend `VITE_API_BASE_URL=http://localhost:8000` and the Firebase client e
 - The dossier source excerpt is stored by the admin, not independently fact-checked; verify legitimacy before release.
 - File limits must be exercised with malformed, empty, oversized, encrypted and scanned content.
 - High-risk evidence gate uses the latest draft findings; verify rule updates and concurrent reviewers before production use.
-- Browser screenshot testing, live Gemini image results, Render deployment, Firebase role provisioning and external judge login still require independent live verification.
+- Hosted authenticated role flows and Gemini image findings were manually tested on October 28, 2026; independent judge access and backend Render commit/version verification remain separate release checks.
 - Existing exposed demo credentials must be rotated and secure judge access must be provisioned separately.
+
+
+### Live functional QA results — October 28, 2026
+
+Manual end-to-end checks were performed with separately authenticated Creator, Reviewer, and Admin roles in the **Inkloom Evaluation Brands** test workspace. All deliberately noncompliant text and evidence were **synthetic QA fixtures, not legitimate product substantiation**. Do not publish or reuse test claims.
+
+| Test | Observed result | Scope / caveat |
+|---|---|---|
+| Visual JPG/PNG creative | 2 high-severity findings: deterministic banned text match and Gemini visual advisory for `100% guaranteed results` | Human interpretation needed for model findings |
+| Reference logo governance | After admin configuration, review reported `logo_status: absent` and a high-severity `logo_advisory` | Advisory only; human confirmation required |
+| Approved palette | Admin palette settings accessible and configurable | Colour mismatch against a controlled test image **not independently demonstrated** |
+| PDF compliance review | 4 located findings across pages 1–2; `needs_revision` | Selectable text, not scanned-image OCR |
+| DOCX compliance review | 4 findings at paragraphs 5–8 (3 high, 1 medium); `needs_revision` | Deterministic rule extraction |
+| Location-linked CSV | Download succeeded; 4 issue data rows inspected | CSV format may prompt an Excel compatibility notice |
+| Evidence-free approval attempt | High-risk draft approval rejected: missing matching dossier or recorded exception of at least 25 characters | Draft remained in reviewer flow |
+| Reviewer exception approval | Test-only draft approved with documented exception; Audit Trail recorded `method: recorded_reviewer_exception` and reviewer rationale | No automatic publication |
+| Admin evidence dossier | Created versioned QA dossier `claim_0a988087bc2c`, version 1 | Source explicitly labelled **not real evidence** |
+| Dossier-backed approval | New high-risk synthetic QA draft approved; Audit Trail showed `method: approved_dossier`, matching dossier ID/version, verifier/time/evidence excerpt | Tests workflow correctness, **not** truth of the prohibited claim |
+| Publication gate | Both approval variants recorded `publication_status: manual_only_no_auto_publish` | No public-content publication |
+
+**Remaining release checks:** independently confirm latest backend Render commit, test a controlled off-palette creative, verify a matching-logo positive case, and consider scanned PDF OCR/concurrency/independent source verification for future production hardening. CI and user-reported manual tests should not be conflated.
 
 ### Evidence of testing
 
-`.github/workflows/round3.yml` runs backend pytest and frontend Vite build on the feature branch / pull requests. CI outcomes must be checked in GitHub Actions and quoted accurately in the final PDF. Do **not** claim tests passed merely because the workflow file exists.
+`.github/workflows/round3.yml` runs backend pytest and frontend Vite build on pull requests and pushes. The latest known green Round 3 backend CI before this documentation change recorded **49 passed, 1 skipped**, with a successful frontend production build; check current GitHub Actions for any newer outcome. The manual results below are separately observed behavior, not automated CI results.

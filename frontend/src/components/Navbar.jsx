@@ -63,6 +63,7 @@ export default function Navbar({
             >
               Audit Trail
             </button>
+            <button className={'nav-tab-btn '+(currentTab === 'round3' ? 'active' : '')} onClick={() => setCurrentTab('round3')}>Creative & Evidence Studio</button>
             {import.meta.env.DEV && (
               <button
                 className={`nav-tab-btn ${currentTab === 'phase1' ? 'active' : ''}`}

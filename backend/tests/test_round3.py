@@ -56,7 +56,6 @@ def test_versioned_dossier_tenant_isolation(monkeypatch):
         r3.resolve_approval_evidence("another_org","Clinically tested daily",saved["id"],None)
     updated=r3.update_dossier(saved["id"],claim,user())
     assert updated["version"]==2 and len(updated["history"])==1
-    assert r3.resolve_approval_evidence("org_r3_test","something else",saved["id"],None) if False else True
     with pytest.raises(HTTPException):
         r3.resolve_approval_evidence("org_r3_test","something else",saved["id"],None)
 

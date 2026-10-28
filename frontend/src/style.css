@@ -2721,3 +2721,89 @@ button:disabled {
   animation: spin 0.8s linear infinite;
 }
 
+
+
+/* Round 3 Studio: consistent dark, accessible inputs and actions */
+.r3-studio {
+  width: 100%;
+  box-shadow: var(--shadow-card);
+}
+.r3-studio h2 { font-size: clamp(22px, 3vw, 29px); margin: 4px 0 12px; }
+.r3-studio h3 { font-size: 18px; margin: 22px 0 16px; }
+.r3-studio p { line-height: 1.55; }
+.r3-studio label, .r3-studio .r3-field-label {
+  display: block;
+  font-weight: 650;
+  font-size: 13px;
+  color: #cbd5e1;
+  margin: 16px 0 8px;
+}
+.r3-studio input:not([type="file"]), .r3-studio textarea {
+  display: block;
+  width: 100%;
+  background: #0b1528;
+  border: 1px solid #3d5174;
+  color: #f8fafc;
+  border-radius: 9px;
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 44px;
+}
+.r3-studio textarea { resize: vertical; min-height: 100px; }
+.r3-studio textarea::placeholder, .r3-studio input::placeholder { color: #8799b3; }
+.r3-studio input:focus-visible, .r3-studio textarea:focus-visible,
+.r3-studio button:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+.r3-studio .r3-file-input {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  padding: 13px;
+  border: 1px dashed #647ba7;
+  border-radius: 10px;
+  background: #111d35;
+  color: #bfcee7;
+  font-size: 13px;
+}
+.r3-studio .r3-file-input::file-selector-button {
+  background: #293d68;
+  color: #f3f6ff;
+  border: 1px solid #516796;
+  border-radius: 7px;
+  font: inherit;
+  font-weight: 600;
+  padding: 9px 13px;
+  cursor: pointer;
+  margin-right: 14px;
+}
+.r3-studio .r3-file-input:hover { border-color: #818cf8; }
+.r3-studio .r3-file-input::file-selector-button:hover { background: #405989; }
+.r3-studio .r3-file-selected { color: #6ee7b7; font-size: 13px; margin: 8px 0 15px; overflow-wrap: anywhere; }
+.r3-studio .r3-help { color: #9fb0cb; font-size: 13px; margin: 10px 0 4px; }
+.r3-studio .r3-action {
+  margin-top: 10px;
+  padding: 11px 20px;
+  background: #5954ed;
+  border: 1px solid #7975fa;
+  color: white;
+  border-radius: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background .15s ease;
+}
+.r3-studio .r3-action:hover:not(:disabled) { background: #7772f5; }
+.r3-studio .r3-action-secondary { background: #293d68; border-color: #566f9c; }
+.r3-studio .r3-action-secondary:hover:not(:disabled) { background: #3f5684; }
+.r3-studio button:disabled {
+  opacity: .58;
+  cursor: not-allowed;
+}
+@media (max-width: 600px) {
+  .r3-studio { padding: 16px !important; }
+  .r3-studio .r3-file-input { max-width: 100%; }
+}

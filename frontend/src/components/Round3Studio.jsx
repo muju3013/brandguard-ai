@@ -19,6 +19,22 @@ export default function Round3Studio({ user, token }) {
   }
   useEffect(()=>{if(token)reload();},[token]);
 
+  function pickReviewFile(event, kind) {
+    const selected = event.target.files?.[0] || null;
+    const isCreative = kind === 'creative';
+    const validExtension = isCreative ? /\.(png|jpe?g)$/i : /\.(pdf|docx)$/i;
+    const maxBytes = (isCreative ? 4 : 5) * 1024 * 1024;
+    setResult(null);
+    setError('');
+    if (selected && (!validExtension.test(selected.name) || !selected.size || selected.size > maxBytes)) {
+      setFile(null);
+      event.target.value = '';
+      setError(`Select a valid ${isCreative ? 'JPG/PNG (up to 4 MB)' : 'PDF/DOCX (up to 5 MB)'} file.`);
+      return;
+    }
+    setFile(selected);
+  }
+
   async function run(callback) {
     setBusy(true);setError('');setSuccess('');
     try {await callback();} catch(e){setError(e.message||'Request failed.');}
@@ -37,7 +53,7 @@ export default function Round3Studio({ user, token }) {
   const tabStyle={padding:'10px 14px',borderRadius:8,border:'1px solid #516080',background:'#1a2a4a',color:'white',cursor:'pointer'};
   const fieldStyle={width:'100%',padding:10,margin:'6px 0 12px',borderRadius:6};
   const wrap={maxWidth:1000,margin:'20px auto',padding:22,background:'#101b32',border:'1px solid #334663',borderRadius:16,color:'#eff4ff'};
-  return <section style={wrap}>
+  return <section className="r3-studio" style={wrap}>
     <h2>Round 3 · Brand Governance Studio</h2>
     <p>Image creative checks, document compliance and versioned evidence. Visual AI findings are advisory; final approval always belongs to a reviewer.</p>
     <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:22}}>
@@ -55,25 +71,30 @@ export default function Round3Studio({ user, token }) {
         <input type="file" accept=".png,.jpg,.jpeg" onChange={e=>setLogo(e.target.files?.[0]||null)}/>
         <p><button disabled={busy} onClick={()=>run(async()=>{const colours=palette.split(',').map(v=>v.trim()).filter(Boolean);await api.updateBrandAssets(token,colours,logo);setSuccess('Approved brand assets saved for your workspace.');})}>Save approved assets</button></p>
       </div>}
-      <label>Marketing creative JPG/PNG (maximum 4 MB)</label>
-      <input type="file" accept=".png,.jpg,.jpeg" onChange={e=>setFile(e.target.files?.[0]||null)}/>
-      <p style={{marginTop:12}}>Optional exact text from creative for deterministic restricted-phrase checks:</p>
-      <textarea style={fieldStyle} rows={3} value={creativeText} onChange={e=>setCreativeText(e.target.value)}/>
-      <button disabled={!file||busy} onClick={()=>run(async()=>setResult(await api.reviewCreative(token,file,creativeText)))}>{busy?'Reviewing...':'Review creative'}</button>
+      <label htmlFor="r3-creative-file">Marketing creative JPG/PNG (maximum 4 MB)</label>
+      <input id="r3-creative-file" className="r3-file-input" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" onChange={e=>pickReviewFile(e,'creative')}/>
+      {file && <p className="r3-file-selected" role="status">✓ Selected: {file.name} ({(file.size / 1048576).toFixed(2)} MB)</p>}
+      <label htmlFor="r3-creative-text" className="r3-field-label">Creative copy (optional — for deterministic text checks)</label>
+      <textarea id="r3-creative-text" style={fieldStyle} rows={3} placeholder="Example: 100% guaranteed results" value={creativeText} onChange={e=>setCreativeText(e.target.value)}/>
+      <button className="r3-action" disabled={!file||busy} onClick={()=>run(async()=>setResult(await api.reviewCreative(token,file,creativeText)))}>{busy?'Reviewing...':'Review creative'}</button>
+      {!file && <p className="r3-help">Select a JPG/PNG above to enable creative review.</p>}}
     </>}
     {mode==='documents'&&<>
       <h3>Multipage marketing document compliance</h3>
       <p>PDF and DOCX up to 5 MB and 25 pages (DOCX up to 250 text sections). Scanned PDF pages without selectable text are marked unreviewed. This is deterministic rule checking, not a claim of full semantic document review.</p>
-      <input type="file" accept=".pdf,.docx" onChange={e=>setFile(e.target.files?.[0]||null)}/>
-      <p><button disabled={!file||busy} onClick={()=>run(async()=>setResult(await api.reviewDocument(token,file)))}>{busy?'Reviewing...':'Check document'}</button></p>
-      {result&&<button onClick={downloadableReport}>Download location-linked CSV issues report</button>}
+      <label htmlFor="r3-document-file">Document file (maximum 5 MB)</label>
+      <input id="r3-document-file" className="r3-file-input" type="file" accept=".pdf,.docx,application/pdf" onChange={e=>pickReviewFile(e,'documents')}/>
+      {file && <p className="r3-file-selected" role="status">✓ Selected: {file.name} ({(file.size / 1048576).toFixed(2)} MB)</p>}
+      <p><button className="r3-action" disabled={!file||busy} onClick={()=>run(async()=>setResult(await api.reviewDocument(token,file)))}>{busy?'Reviewing...':'Check document'}</button></p>
+      {!file && <p className="r3-help">Choose a PDF or DOCX to enable checking.</p>}
+      {result&&<button className="r3-action r3-action-secondary" onClick={downloadableReport}>Download location-linked CSV issues report</button>}
     </>}
     {mode==='dossiers'&&<>
       <h3>Versioned, evidence-backed approved claims</h3>
       <p>Admins verify dossiers; reviewers use the evidence ID when approving a high-risk draft. An exception instead requires a documented reason of at least 25 characters.</p>
       {user?.role==='admin'&&<div style={{padding:14,border:'1px solid #43537a',borderRadius:10}}>
         {Object.entries({claim_text:'Exact approved claim wording',source_title:'Evidence source title',source_url:'Source URL (optional)',source_excerpt:'Supporting source excerpt',verification_note:'Admin verification rationale'}).map(([key,label])=><label key={key} style={{display:'block'}}>{label}{key==='source_excerpt'||key==='verification_note'?<textarea rows={3} style={fieldStyle} value={claim[key]} onChange={e=>setClaim({...claim,[key]:e.target.value})}/>:<input style={fieldStyle} value={claim[key]} onChange={e=>setClaim({...claim,[key]:e.target.value})}/>}</label>)}
-        <button disabled={busy} onClick={()=>run(async()=>{const saved=await api.createDossier(token,claim);await reload();setSuccess('Created verified dossier '+saved.id);})}>Create verified dossier</button>
+        <button className="r3-action" disabled={busy} onClick={()=>run(async()=>{const saved=await api.createDossier(token,claim);await reload();setSuccess('Created verified dossier '+saved.id);})}>Create verified dossier</button>
       </div>}
       <h4>Workspace claim dossiers</h4>
       {!dossiers.length&&<p>No dossiers yet. An admin needs to create verified evidence first.</p>}

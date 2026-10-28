@@ -54,6 +54,31 @@ code, pre {
 }
 
 /* Navbar */
+/* Round 3: keep the new Creative & Evidence Studio navigation discoverable. */
+@media (max-width: 1900px) {
+  .app-navbar {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .navbar-left {
+    min-width: 0;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+  }
+  .nav-tabs {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .navbar-right {
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+}
+.nav-tab-btn {
+  white-space: nowrap;
+}
+
 .app-navbar {
   display: flex;
   align-items: center;

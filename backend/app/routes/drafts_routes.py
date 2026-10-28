@@ -9,6 +9,7 @@ from app.auth import get_current_user, require_role
 from app.checker import evaluate_draft_against_guidelines
 from app.db import db, now_iso
 from app.rate_limiter import rate_limiter_general, rate_limiter_check
+from app.routes.r3_routes import resolve_approval_evidence
 
 from app.firebase_setup import get_firebase_app
 try:
@@ -383,6 +384,11 @@ def approve_draft(
             detail=f"Only drafts with status 'in_review' can be approved. Current status: '{draft.status}'."
         )
 
+    high_risk = any(f.severity == "high" for f in draft.findings)
+    evidence_record = None
+    if high_risk:
+        evidence_record = resolve_approval_evidence(user.org_id, draft.content, req.evidence_dossier_id, req.exception_reason)
+
     draft.status = "approved"
     draft.review_notes = req.comments.strip()
     draft.reviewed_by = user.user_id
@@ -404,7 +410,9 @@ def approve_draft(
         details={
             "decision": "approved",
             "review_notes": req.comments.strip(),
-            "publication_status": "manual_only_no_auto_publish"
+            "publication_status": "manual_only_no_auto_publish",
+            "high_risk": high_risk,
+            "evidence_record": evidence_record
         },
         timestamp=now_iso()
     ))

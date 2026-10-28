@@ -175,3 +175,16 @@ export function subscribeToAuthState(callback) {
     window.removeEventListener('brandguard_auth_change', handler);
   };
 }
+
+// Resolve the current Firebase ID token for each authenticated API operation.
+// Firebase refreshes expiring ID tokens internally; the forced variant is used
+// once after a server rejects a request with HTTP 401.
+export async function getFreshAuthToken(existingToken, forceRefresh = false) {
+  if (isFirebaseConfigured && firebaseAuthInstance?.currentUser) {
+    return firebaseAuthInstance.currentUser.getIdToken(forceRefresh);
+  }
+  if (isDemoAuthEnabled && existingToken?.startsWith('demo-token:')) {
+    return existingToken;
+  }
+  throw new Error('Your Firebase session is no longer active. Please sign in again.');
+}

@@ -1,3 +1,5 @@
+import { getFreshAuthToken } from './firebase';
+
 export class ApiError extends Error {
   constructor(message, status = 0, data = null, isNetworkError = false) {
     super(message);
@@ -10,57 +12,78 @@ export class ApiError extends Error {
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'https://brandguard-ai-zvud.onrender.com').replace(/\/$/, '');
 
-function getHeaders(token) {
-  const headers = { 'Content-Type': 'application/json' };
+function getHeaders() {
+  return { 'Content-Type': 'application/json' };
+}
+
+async function fetchWithFreshAuth(url, options = {}, token = null) {
+  let currentToken = null;
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    try {
+      currentToken = await getFreshAuthToken(token);
+    } catch (err) {
+      throw new ApiError('Your session has expired. Please sign in again.', 401, null, false);
+    }
   }
-  return headers;
+
+  const send = (activeToken) => fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {})
+    }
+  });
+
+  let response;
+  try {
+    response = await send(currentToken);
+  } catch (err) {
+    throw new ApiError(`Network connection failed: Unable to reach BrandGuard API at ${API_BASE}. The backend may be offline or waking up.`, 0, null, true);
+  }
+
+  // Auth rejected a still-cached Firebase token: force an SDK refresh and
+  // retry once. A 401 is rejected before any protected write occurs.
+  if (response.status === 401 && token) {
+    try {
+      const renewedToken = await getFreshAuthToken(token, true);
+      if (renewedToken && renewedToken !== currentToken) {
+        response = await send(renewedToken);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      throw new ApiError('Your session has expired. Please sign in again.', 401, null, false);
+    }
+  }
+  return response;
+}
+
+function decodeApiResponseError(response, data) {
+  let errorMsg = data?.detail;
+  if (typeof errorMsg !== 'string' || !errorMsg) {
+    if (response.status === 401) {
+      errorMsg = 'Session expired or invalid. Please sign in again.';
+    } else if (response.status === 403) {
+      errorMsg = 'Permission denied (403): Your account role does not have authorization for this resource.';
+    } else if (response.status === 404) {
+      errorMsg = 'Not found (404): The requested resource does not exist in your workspace.';
+    } else if (response.status === 503) {
+      errorMsg = 'Backend service unavailable (503): Authentication or database is temporarily unreachable.';
+    } else {
+      errorMsg = `API Error ${response.status}: Unexpected backend response.`;
+    }
+  }
+  return new ApiError(errorMsg, response.status, data, false);
 }
 
 async function request(endpoint, options = {}, token = null) {
   const url = `${API_BASE}${endpoint}`;
   const config = {
     ...options,
-    headers: {
-      ...getHeaders(token),
-      ...(options.headers || {})
-    }
+    headers: { ...getHeaders(), ...(options.headers || {}) }
   };
-
-  let res;
-  try {
-    res = await fetch(url, config);
-  } catch (networkErr) {
-    throw new ApiError(
-      `Network connection failed: Unable to reach BrandGuard API at ${API_BASE}. The backend service may be offline or starting up.`,
-      0,
-      null,
-      true
-    );
-  }
-
-  const data = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    let errorMsg = data?.detail;
-    if (!errorMsg) {
-      if (res.status === 401) {
-        errorMsg = 'Authentication required: Your session has expired or is invalid. Please sign in again.';
-      } else if (res.status === 403) {
-        errorMsg = 'Permission denied (403): Your account role does not have authorization for this resource.';
-      } else if (res.status === 404) {
-        errorMsg = 'Not found (404): No organization membership or guideline record exists for your account.';
-      } else if (res.status === 503) {
-        errorMsg = 'Backend service unavailable (503): Database or authentication credentials temporarily unreachable.';
-      } else {
-        errorMsg = `API Error ${res.status}: Unexpected backend response.`;
-      }
-    }
-    const err = new ApiError(errorMsg, res.status, data, false);
-    throw err;
-  }
-
+  const response = await fetchWithFreshAuth(url, config, token);
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw decodeApiResponseError(response, data);
   return data;
 }
 
@@ -144,4 +167,10 @@ export const api = {
   }
 };
 
-async function upload(path,opts,token){let response;try{response=await fetch(API_BASE+path,{...opts,headers:token?{Authorization:'Bearer '+token}:{}})}catch(e){throw new ApiError('Network error contacting API',0,null,true)}const data=await response.json().catch(()=>null);if(!response.ok)throw new ApiError(typeof data?.detail==='string'?data.detail:'Upload failed ('+response.status+')',response.status,data);return data;}
+async function upload(path, opts, token) {
+  // Browser must set the multipart boundary; don't send application/json here.
+  const response = await fetchWithFreshAuth(API_BASE + path, opts, token);
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw decodeApiResponseError(response, data);
+  return data;
+}

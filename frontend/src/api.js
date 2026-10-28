@@ -121,10 +121,10 @@ export const api = {
     request(`/api/drafts/${draftId}/submit`, {
       method: 'POST'
     }, token),
-  approveDraft: (token, draftId, comments) =>
+  approveDraft: (token, draftId, comments, evidence_dossier_id = null, exception_reason = null) =>
     request(`/api/drafts/${draftId}/approve`, {
       method: 'POST',
-      body: JSON.stringify({ comments })
+      body: JSON.stringify({ comments, evidence_dossier_id, exception_reason })
     }, token),
   requestChangesDraft: (token, draftId, comments) =>
     request(`/api/drafts/${draftId}/request-changes`, {
@@ -132,9 +132,16 @@ export const api = {
       body: JSON.stringify({ comments })
     }, token),
 
+  fetchDossiers: token => request('/api/r3/dossiers', {}, token),
+  createDossier: (token,data) => request('/api/r3/dossiers',{method:'POST',body:JSON.stringify(data)},token),
+  updateBrandAssets: (token,palette,logo) => {const f=new FormData();f.append('palette',JSON.stringify(palette));if(logo)f.append('logo',logo);return upload('/api/r3/brand-assets',{method:'PUT',body:f},token);},
+  reviewCreative: (token,file,creativeText) => {const f=new FormData();f.append('file',file);f.append('creative_text',creativeText);return upload('/api/r3/creatives/review',{method:'POST',body:f},token);},
+  reviewDocument: (token,file) => {const f=new FormData();f.append('file',file);return upload('/api/r3/documents/review',{method:'POST',body:f},token);},
   // Audit Logs
   fetchAuditLogs: (token, entityId = null) => {
     const query = entityId ? `?entity_id=${encodeURIComponent(entityId)}` : '';
     return request(`/api/audit-logs${query}`, {}, token);
   }
 };
+
+async function upload(path,opts,token){let response;try{response=await fetch(API_BASE+path,{...opts,headers:token?{Authorization:'Bearer '+token}:{}})}catch(e){throw new ApiError('Network error contacting API',0,null,true)}const data=await response.json().catch(()=>null);if(!response.ok)throw new ApiError(typeof data?.detail==='string'?data.detail:'Upload failed ('+response.status+')',response.status,data);return data;}

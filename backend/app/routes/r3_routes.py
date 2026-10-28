@@ -343,7 +343,7 @@ def update_dossier(dossier_id:str,req:DossierRequest,
            {"version":updated["version"],"previous_version":old["version"]})
     return updated
 
-def resolve_approval_evidence(org_id,draft_text,evidence_id,exception_reason):
+def resolve_approval_evidence(org_id,draft_text,evidence_id,exception_reason,high_risk_findings=None):
     """Server-authoritative high-risk evidence validation shared by approval endpoint."""
     if evidence_id:
         d=_fetch("dossiers",evidence_id)
@@ -353,6 +353,17 @@ def resolve_approval_evidence(org_id,draft_text,evidence_id,exception_reason):
             raise HTTPException(422,"Dossier claim text must appear in the reviewed draft.")
         if not d.get("source_excerpt") or not d.get("verified_by"):
             raise HTTPException(422,"Dossier is not verified.")
+        # A dossier for an unrelated, benign claim cannot justify a flagged risky claim.
+        # One dossier must explicitly cover every DISTINCT high-risk match in this draft,
+        # otherwise the reviewer must use an independently recorded exception.
+        if high_risk_findings:
+            matches = {f.matched_text.casefold().strip() for f in high_risk_findings if f.severity == "high"}
+            claim = d["claim_text"].casefold()
+            not_covered = sorted(m for m in matches if m and m not in claim)
+            if not_covered:
+                raise HTTPException(422,
+                    "Evidence dossier does not cover all flagged high-risk claims. "
+                    "Use a dossier explicitly covering those claims or record an authorised reviewer exception.")
         return {"method":"approved_dossier","dossier_id":d["id"],"version":d["version"],
             "source_title":d["source_title"],"source_excerpt":d["source_excerpt"],
             "verified_by":d["verified_by"],"verified_at":d["verified_at"]}

@@ -77,7 +77,7 @@ export default function Round3Studio({ user, token }) {
       <label htmlFor="r3-creative-text" className="r3-field-label">Creative copy (optional — for deterministic text checks)</label>
       <textarea id="r3-creative-text" style={fieldStyle} rows={3} placeholder="Example: 100% guaranteed results" value={creativeText} onChange={e=>setCreativeText(e.target.value)}/>
       <button className="r3-action" disabled={!file||busy} onClick={()=>run(async()=>setResult(await api.reviewCreative(token,file,creativeText)))}>{busy?'Reviewing...':'Review creative'}</button>
-      {!file && <p className="r3-help">Select a JPG/PNG above to enable creative review.</p>}
+      {!file && <p className="r3-help">Select a JPG/PNG above to enable creative review.</p>}}
     </>}
     {mode==='documents'&&<>
       <h3>Multipage marketing document compliance</h3>
@@ -86,7 +86,7 @@ export default function Round3Studio({ user, token }) {
       <input id="r3-document-file" className="r3-file-input" type="file" accept=".pdf,.docx,application/pdf" onChange={e=>pickReviewFile(e,'documents')}/>
       {file && <p className="r3-file-selected" role="status">✓ Selected: {file.name} ({(file.size / 1048576).toFixed(2)} MB)</p>}
       <p><button className="r3-action" disabled={!file||busy} onClick={()=>run(async()=>setResult(await api.reviewDocument(token,file)))}>{busy?'Reviewing...':'Check document'}</button></p>
-      {!file && <p className="r3-help">Choose a PDF or DOCX to enable checking.</p>
+      {!file && <p className="r3-help">Choose a PDF or DOCX to enable checking.</p>}
       {result&&<button className="r3-action r3-action-secondary" onClick={downloadableReport}>Download location-linked CSV issues report</button>}
     </>}
     {mode==='dossiers'&&<>

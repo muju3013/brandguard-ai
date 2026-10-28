@@ -7,7 +7,7 @@ import re
 
 from app.config import settings
 from app.rate_limiter import rate_limiter_check
-from app.routes import auth_routes, guidelines_routes, drafts_routes, audit_routes
+from app.routes import auth_routes, guidelines_routes, drafts_routes, audit_routes, r3_routes
 
 # Configure structured production logging
 logging.basicConfig(
@@ -111,3 +111,5 @@ app.include_router(auth_routes.router)
 app.include_router(guidelines_routes.router)
 app.include_router(drafts_routes.router)
 app.include_router(audit_routes.router)
+
+app.include_router(r3_routes.router)
